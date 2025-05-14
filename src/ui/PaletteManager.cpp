@@ -36,8 +36,8 @@ void PaletteManager::initialize() {
 
 void PaletteManager::render(const Camera2D& camera) {
     // Draw palette background
-    DrawRectangle(0, 0, Config::PALETTE_WIDTH, Config::SCREEN_HEIGHT, Config::Colors::PALETTE);
-    DrawLine(Config::PALETTE_WIDTH, 0, Config::PALETTE_WIDTH, Config::SCREEN_HEIGHT, LIGHTGRAY);
+    DrawRectangle(0, 0, Config::PALETTE_WIDTH, GetScreenHeight(), Config::Colors::PALETTE);
+    DrawLine(Config::PALETTE_WIDTH, 0, Config::PALETTE_WIDTH, GetScreenHeight(), LIGHTGRAY);
 
     // Draw palette title
     DrawRectangle(0, 0, Config::PALETTE_WIDTH, 40, Config::Colors::PALETTE);
@@ -81,11 +81,11 @@ void PaletteManager::render(const Camera2D& camera) {
         );
     }
 
-    // Draw instructions at the bottom
-    DrawRectangle(0, Config::SCREEN_HEIGHT - 60, Config::PALETTE_WIDTH, 60, Fade(BLACK, 0.5f));
-    DrawText("Drag: Place", 10, Config::SCREEN_HEIGHT - 50, 16, LIGHTGRAY);
-    DrawText("Right-click: Cancel", 10, Config::SCREEN_HEIGHT - 30, 16, LIGHTGRAY);
-    DrawText("Delete: Remove", 10, Config::SCREEN_HEIGHT - 10, 16, LIGHTGRAY);
+    // Draw instructions at the bottom with more space and updated controls
+    DrawRectangle(0, GetScreenHeight() - 80, Config::PALETTE_WIDTH, 80, Fade(BLACK, 0.5f));
+    DrawText("Drag: Place", 10, GetScreenHeight() - 70, 16, LIGHTGRAY);
+    DrawText("Middle/Right: Pan", 10, GetScreenHeight() - 50, 16, LIGHTGRAY);
+    DrawText("Backspace: Remove", 10, GetScreenHeight() - 30, 16, LIGHTGRAY);
 
     // Draw gate preview if dragging
     if (isDraggingGate && draggedGateType != GateType::NONE) {
@@ -123,7 +123,7 @@ void PaletteManager::render(const Camera2D& camera) {
 }
 
 bool PaletteManager::handleClick(Vector2 mousePos) {
-    Rectangle paletteBounds = {0, 0, Config::PALETTE_WIDTH, (float)Config::SCREEN_HEIGHT};
+    Rectangle paletteBounds = {0, 0, Config::PALETTE_WIDTH, (float)GetScreenHeight()};
 
     if (!CheckCollisionPointRec(mousePos, paletteBounds)) {
         return false;
@@ -169,11 +169,16 @@ std::string PaletteManager::getGateTypeName(GateType type) {
 }
 
 Rectangle PaletteManager::getPaletteBounds() const {
-    return {0, 0, Config::PALETTE_WIDTH, (float)Config::SCREEN_HEIGHT};
+    return {0, 0, Config::PALETTE_WIDTH, (float)GetScreenHeight()};
+}
+
+void PaletteManager::handleWindowResize(int newHeight) {
+    // No need to update the palette items' positions as they are fixed
+    // The palette will automatically extend to the new window height
 }
 
 bool PaletteManager::startDraggingGate(Vector2 mousePos) {
-    Rectangle paletteBounds = {0, 0, Config::PALETTE_WIDTH, (float)Config::SCREEN_HEIGHT};
+    Rectangle paletteBounds = {0, 0, Config::PALETTE_WIDTH, (float)GetScreenHeight()};
 
     if (!CheckCollisionPointRec(mousePos, paletteBounds)) {
         return false;
