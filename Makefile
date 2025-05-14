@@ -2,7 +2,7 @@
 
 CXX = g++
 CXXFLAGS = -std=c++17 -Iinclude -Wall
-LDFLAGS_APP = -Llib -lraylib -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL
+LDFLAGS_APP = -Llib -lraylib -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL -O3
 
 # Core module
 SRC_CORE = src/core/GatePin.cpp src/core/LogicGate.cpp src/core/Wire.cpp
@@ -12,7 +12,7 @@ SRC_SIM = src/simulation/CircuitSimulator.cpp
 
 # UI module
 SRC_UI = src/ui/UIManager.cpp src/ui/PaletteManager.cpp src/ui/GateRenderer.cpp src/ui/WireRenderer.cpp src/ui/WireRouter.cpp src/ui/InputHandler.cpp
-
+		
 # Application module
 SRC_APP = src/app/Application.cpp src/app/Config.cpp src/app/main.cpp
 
