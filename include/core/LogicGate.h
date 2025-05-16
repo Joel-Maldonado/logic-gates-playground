@@ -34,16 +34,15 @@ public:
     void markDirty();
     bool needsEvaluation() const;
 
-protected: // Changed from public
+protected:
     void initializeInputPin(int pinId, Vector2 relativeOffset);
     void initializeOutputPin(int pinId, Vector2 relativeOffset);
-public:   // Back to public for subsequent methods
 
+public:
     GatePin* getInputPin(size_t pinIndex);
     GatePin* getOutputPin(size_t pinIndex);
     const GatePin* getInputPin(size_t pinIndex) const;
     const GatePin* getOutputPin(size_t pinIndex) const;
-
 
     size_t getInputPinCount() const;
     size_t getOutputPinCount() const;
@@ -71,13 +70,11 @@ public:   // Back to public for subsequent methods
     const std::vector<GatePin>& getAllInputPins() const { return inputPins; }
     const std::vector<GatePin>& getAllOutputPins() const { return outputPins; }
 
-    // Replaced static handleGateDeletion with a member function
     std::vector<Wire*> prepareForDeletion();
 
-protected: // For non-const versions
+protected:
     std::vector<GatePin>& getAllInputPins() { return inputPins; }
     std::vector<GatePin>& getAllOutputPins() { return outputPins; }
-
 };
 
 #endif // LOGIC_GATE_H

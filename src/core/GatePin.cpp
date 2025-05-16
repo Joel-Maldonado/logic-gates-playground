@@ -7,61 +7,59 @@
 #include <iostream>
 
 GatePin::GatePin(LogicGate* parent, PinType pinType, int id, Vector2 offset)
-    : parentGate_(parent), 
-      type_(pinType), 
-      pinId_(id), 
+    : parentGate_(parent),
+      type_(pinType),
+      pinId_(id),
       relativeOffset_(offset),
-      isHovered_(false), 
-      isSelected_(false), 
-      clickRadius_(Config::PIN_CLICK_RADIUS), 
-      sourceOutputPin_(nullptr), 
+      isHovered_(false),
+      isSelected_(false),
+      clickRadius_(Config::PIN_CLICK_RADIUS),
+      sourceOutputPin_(nullptr),
       currentState_(false) {
 }
 
-// Getters implementation
-LogicGate* GatePin::getParentGate() const { 
-    return parentGate_; 
+LogicGate* GatePin::getParentGate() const {
+    return parentGate_;
 }
 
-PinType GatePin::getType() const { 
-    return type_; 
+PinType GatePin::getType() const {
+    return type_;
 }
 
-int GatePin::getId() const { 
-    return pinId_; 
+int GatePin::getId() const {
+    return pinId_;
 }
 
-Vector2 GatePin::getRelativeOffset() const { 
-    return relativeOffset_; 
+Vector2 GatePin::getRelativeOffset() const {
+    return relativeOffset_;
 }
 
-bool GatePin::isHovered() const { 
-    return isHovered_; 
+bool GatePin::isHovered() const {
+    return isHovered_;
 }
 
-bool GatePin::isSelected() const { 
-    return isSelected_; 
+bool GatePin::isSelected() const {
+    return isSelected_;
 }
 
-float GatePin::getClickRadius() const { 
-    return clickRadius_; 
+float GatePin::getClickRadius() const {
+    return clickRadius_;
 }
 
-const GatePin* GatePin::getSourceOutputPin() const { 
-    return sourceOutputPin_; 
+const GatePin* GatePin::getSourceOutputPin() const {
+    return sourceOutputPin_;
 }
 
-const std::vector<GatePin*>& GatePin::getDependentInputPins() const { 
-    return dependentInputPins_; 
+const std::vector<GatePin*>& GatePin::getDependentInputPins() const {
+    return dependentInputPins_;
 }
 
-// UI state mutators
-void GatePin::setHovered(bool hovered) { 
-    isHovered_ = hovered; 
+void GatePin::setHovered(bool hovered) {
+    isHovered_ = hovered;
 }
 
-void GatePin::setSelected(bool selected) { 
-    isSelected_ = selected; 
+void GatePin::setSelected(bool selected) {
+    isSelected_ = selected;
 }
 
 bool GatePin::getState() const {
@@ -107,8 +105,7 @@ void GatePin::connectTo(GatePin* outputPin) {
         return;
     }
     if (outputPin->getType() != PinType::OUTPUT_PIN) {
-        std::cerr << "Error: InputPin (" << pinId_ << " of " << (parentGate_ ? parentGate_->getId() : "UNKNOWN_GATE")
-                  << ") cannot connect to a non-OUTPUT_PIN." << std::endl;
+        std::cerr << "Error: InputPin cannot connect to a non-OUTPUT_PIN." << std::endl;
         return;
     }
     if (sourceOutputPin_ == outputPin) {
@@ -148,7 +145,7 @@ void GatePin::addDependentPin(GatePin* inputPin) {
 void GatePin::removeDependentPin(GatePin* inputPin) {
     if (type_ == PinType::OUTPUT_PIN && inputPin) {
         dependentInputPins_.erase(
-            std::remove(dependentInputPins_.begin(), dependentInputPins_.end(), inputPin), 
+            std::remove(dependentInputPins_.begin(), dependentInputPins_.end(), inputPin),
             dependentInputPins_.end()
         );
     }
@@ -159,20 +156,19 @@ Vector2 GatePin::getAbsolutePosition() const {
         Vector2 parentPos = parentGate_->getPosition();
         return { parentPos.x + relativeOffset_.x, parentPos.y + relativeOffset_.y };
     }
-    std::cerr << "Warning: GatePin (" << pinId_ << ")::getAbsolutePosition called on a pin with no parent gate." << std::endl;
     return relativeOffset_;
 }
 
-bool GatePin::isConnectedInput() const { 
-    return (type_ == PinType::INPUT_PIN && sourceOutputPin_ != nullptr); 
+bool GatePin::isConnectedInput() const {
+    return (type_ == PinType::INPUT_PIN && sourceOutputPin_ != nullptr);
 }
 
-bool GatePin::hasConnectedOutputDependents() const { 
-    return (type_ == PinType::OUTPUT_PIN && !dependentInputPins_.empty()); 
+bool GatePin::hasConnectedOutputDependents() const {
+    return (type_ == PinType::OUTPUT_PIN && !dependentInputPins_.empty());
 }
 
-bool GatePin::isConnected() const { 
-    return isConnectedInput() || hasConnectedOutputDependents(); 
+bool GatePin::isConnected() const {
+    return isConnectedInput() || hasConnectedOutputDependents();
 }
 
 bool GatePin::isMouseOverPin(Vector2 mousePos) const {

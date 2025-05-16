@@ -5,21 +5,14 @@
 #include <utility>
 #include <algorithm>
 #include <iostream>
-#include <set> // Added for std::set
+#include <set>
 #include "raymath.h"
-
-
-
 
 LogicGate::LogicGate(std::string gateId, Vector2 pos, float w, float h)
     : id(std::move(gateId)), position(pos), width(w), height(h), isDirty(true), isSelected(false) {
 }
 
 LogicGate::~LogicGate() {
-    // Pin disconnection logic is initiated by LogicGate::prepareForDeletion().
-    // The caller (e.g., simulation manager in main.cpp) is responsible for
-    // deleting the Wire objects returned by prepareForDeletion() and then this gate.
-    // associatedWires is cleared by prepareForDeletion().
 }
 
 void LogicGate::update() {
@@ -32,9 +25,6 @@ void LogicGate::update() {
 void LogicGate::markDirty() {
     if (!isDirty) {
         isDirty = true;
-        // Output pin state changes propagate dirtiness to dependent gates via their setState.
-        // This markDirty call is primarily for changes to input sources or internal state
-        // that require the gate itself to re-evaluate.
     }
 }
 
@@ -52,28 +42,28 @@ void LogicGate::initializeOutputPin(int pinId, Vector2 relativeOffset) {
 
 GatePin* LogicGate::getInputPin(size_t pinIndex) {
     if (pinIndex >= inputPins.size()) {
-        throw std::out_of_range("Input pin index out of range for gate " + id + ". Index: " + std::to_string(pinIndex) + ", Size: " + std::to_string(inputPins.size()));
+        throw std::out_of_range("Input pin index out of range for gate " + id);
     }
     return &inputPins[pinIndex];
 }
 
 const GatePin* LogicGate::getInputPin(size_t pinIndex) const {
     if (pinIndex >= inputPins.size()) {
-        throw std::out_of_range("Input pin index out of range for gate " + id + ". Index: " + std::to_string(pinIndex) + ", Size: " + std::to_string(inputPins.size()));
+        throw std::out_of_range("Input pin index out of range for gate " + id);
     }
     return &inputPins[pinIndex];
 }
 
 GatePin* LogicGate::getOutputPin(size_t pinIndex) {
     if (pinIndex >= outputPins.size()) {
-        throw std::out_of_range("Output pin index out of range for gate " + id + ". Index: " + std::to_string(pinIndex) + ", Size: " + std::to_string(outputPins.size()));
+        throw std::out_of_range("Output pin index out of range for gate " + id);
     }
     return &outputPins[pinIndex];
 }
 
 const GatePin* LogicGate::getOutputPin(size_t pinIndex) const {
     if (pinIndex >= outputPins.size()) {
-        throw std::out_of_range("Output pin index out of range for gate " + id + ". Index: " + std::to_string(pinIndex) + ", Size: " + std::to_string(outputPins.size()));
+        throw std::out_of_range("Output pin index out of range for gate " + id);
     }
     return &outputPins[pinIndex];
 }
@@ -88,27 +78,21 @@ size_t LogicGate::getOutputPinCount() const {
 
 void LogicGate::setInputState(size_t pinIndex, bool state) {
     if (pinIndex >= inputPins.size()) {
-        throw std::out_of_range("Input pin index out of range for gate " + id + " when calling setInputState. Index: " + std::to_string(pinIndex) + ", Size: " + std::to_string(inputPins.size()));
+        throw std::out_of_range("Input pin index out of range for gate " + id);
     }
-    // Directly set the input pin's state for testing purposes.
-    // This bypasses the usual connection-based state determination.
     inputPins[pinIndex].setState(state);
     markDirty();
 }
 
 bool LogicGate::getOutputState(size_t pinIndex) const {
     if (pinIndex >= outputPins.size()) {
-        throw std::out_of_range("Output pin index out of range for gate " + id + " when calling getOutputState. Index: " + std::to_string(pinIndex) + ", Size: " + std::to_string(outputPins.size()));
+        throw std::out_of_range("Output pin index out of range for gate " + id);
     }
     return outputPins[pinIndex].getState();
 }
 
 void LogicGate::setPosition(Vector2 newPosition) {
     position = newPosition;
-    // Moving a gate changes the absolute positions of its pins.
-    // This doesn't inherently change logic states, so marking dirty might not be
-    // strictly necessary unless visual updates or other systems depend on it.
-    // For now, we won't markDirty here, as logical state propagation is primary.
 }
 
 Vector2 LogicGate::getPosition() const {
@@ -171,17 +155,13 @@ const std::vector<Wire*>& LogicGate::getAssociatedWires() const {
     return associatedWires;
 }
 
-// New implementation for LogicGate::prepareForDeletion
 std::vector<Wire*> LogicGate::prepareForDeletion() {
-    std::set<Wire*> uniqueAffectedWiresSet; // Use a set to automatically handle duplicates
+    std::set<Wire*> uniqueAffectedWiresSet;
 
-    // Iterate through all input pins of this gate
-    // Need to use the non-const version of getAllInputPins() to potentially modify pins
     for (GatePin& inputPin : getAllInputPins()) {
-        if (inputPin.getSourceOutputPin() != nullptr) { // If the input pin is connected
-            // Find the wire that connects to this input pin
+        if (inputPin.getSourceOutputPin() != nullptr) {
             Wire* connectedWire = nullptr;
-            for (Wire* w : associatedWires) { // associatedWires is a member of LogicGate
+            for (Wire* w : associatedWires) {
                 if (w->getDestPin() == &inputPin && w->getSourcePin() == inputPin.getSourceOutputPin()) {
                     connectedWire = w;
                     break;
@@ -190,24 +170,17 @@ std::vector<Wire*> LogicGate::prepareForDeletion() {
 
             if (connectedWire) {
                 uniqueAffectedWiresSet.insert(connectedWire);
-                GatePin* sourceOfWire = connectedWire->getSourcePin(); // This is inputPin.getSourceOutputPin()
+                GatePin* sourceOfWire = connectedWire->getSourcePin();
 
-                // Tell the source pin (potentially on another gate) to disconnect this wire
                 if (sourceOfWire) {
                     sourceOfWire->disconnectWire(connectedWire);
                 }
-                // Tell this input pin to disconnect from this wire
                 inputPin.disconnectWire(connectedWire);
             }
         }
     }
 
-    // Iterate through all output pins of this gate
     for (GatePin& outputPin : getAllOutputPins()) {
-        // An output pin can be connected to multiple wires.
-        // We need to find all wires originating from this outputPin.
-        // Iterate over a temporary copy of wires associated with this output pin,
-        // as calling disconnectWire might modify the underlying collections indirectly.
         std::vector<Wire*> wiresFromThisOutputPin;
         for (Wire* w : associatedWires) {
             if (w->getSourcePin() == &outputPin) {
@@ -219,20 +192,13 @@ std::vector<Wire*> LogicGate::prepareForDeletion() {
             uniqueAffectedWiresSet.insert(connectedWire);
             GatePin* destOfWire = connectedWire->getDestPin();
 
-            // Tell the destination pin (on another gate) to disconnect from this wire
             if (destOfWire) {
                 destOfWire->disconnectWire(connectedWire);
             }
-            // Tell this output pin to disconnect from this wire
             outputPin.disconnectWire(connectedWire);
         }
     }
 
-    // The gate itself no longer needs to track these wires as it's being deleted.
-    // The actual Wire objects will be deleted by the caller (main.cpp).
     associatedWires.clear();
-
-    // Convert the set of affected wires to a vector to return
     return std::vector<Wire*>(uniqueAffectedWiresSet.begin(), uniqueAffectedWiresSet.end());
 }
-// Old static LogicGate::handleGateDeletion has been removed.

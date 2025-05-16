@@ -6,10 +6,6 @@
 #include "ui/InputHandler.h"
 #include <memory>
 
-/**
- * Main application class
- * Coordinates between UI, simulation, and core logic
- */
 class Application {
 private:
     std::shared_ptr<CircuitSimulator> simulator;
@@ -20,44 +16,13 @@ private:
     int prevWindowHeight;
 
 public:
-    /**
-     * Constructs a new Application
-     */
     Application();
-
-    /**
-     * Initializes the application
-     */
     void initialize();
-
-    /**
-     * Runs the main application loop
-     */
     void run();
-
-    /**
-     * Updates the application state
-     */
     void update();
-
-    /**
-     * Renders the application
-     */
     void render();
-
-    /**
-     * Processes user input
-     */
     void processInput();
-
-    /**
-     * Checks if the window has been resized and updates the UI accordingly
-     */
     void handleWindowResize();
-
-    /**
-     * Cleans up resources
-     */
     void cleanup();
 };
 

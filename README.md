@@ -71,7 +71,6 @@ This will compile the application and create an executable named `main`.
    - Click and drag to place gates on the canvas
    - Connect gates by clicking on an output pin and dragging to an input pin
    - Toggle input sources by clicking on them
-   - Observe output states through output sinks
 
 3. **Interact with the canvas**:
    - Pan: Middle mouse button or right-click and drag

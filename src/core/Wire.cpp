@@ -17,26 +17,21 @@ Wire::Wire(GatePin* srcPin, GatePin* dstPin)
     : isSelected(false), state_(false), sourcePin_(srcPin), destPin_(dstPin),
       isDraggingPoint_(false), draggedPointIndex_(-1) {
     if (!sourcePin_) {
-        throw std::invalid_argument("Source pin cannot be null for Wire constructor.");
+        throw std::invalid_argument("Source pin cannot be null");
     }
     if (!destPin_) {
-        throw std::invalid_argument("Destination pin cannot be null for Wire constructor.");
+        throw std::invalid_argument("Destination pin cannot be null");
     }
     if (sourcePin_->getType() != PinType::OUTPUT_PIN) {
-        throw std::invalid_argument("Wire source must be an OUTPUT_PIN.");
+        throw std::invalid_argument("Wire source must be an OUTPUT_PIN");
     }
     if (destPin_->getType() != PinType::INPUT_PIN) {
-        throw std::invalid_argument("Wire destination must be an INPUT_PIN.");
+        throw std::invalid_argument("Wire destination must be an INPUT_PIN");
     }
     if (destPin_->isConnectedInput()) {
-        // This check is important to prevent multiple wires to the same input pin.
-        std::cerr << "Error: Attempting to connect to an already connected input pin (Gate: "
-                  << (destPin_->getParentGate() ? destPin_->getParentGate()->getId() : "N/A")
-                  << ", PinID: " << destPin_->getId() << "). Wire not created." << std::endl;
-        throw std::runtime_error("Destination input pin is already connected.");
+        throw std::runtime_error("Destination input pin is already connected");
     }
 
-    // destPin->connectTo establishes the connection, updates dependents, and marks dirty.
     destPin_->connectTo(sourcePin_);
 
     LogicGate* srcParentGate = sourcePin_->getParentGate();
@@ -45,15 +40,11 @@ Wire::Wire(GatePin* srcPin, GatePin* dstPin)
     if (srcParentGate) {
         srcParentGate->addWire(this);
     }
-    if (dstParentGate) {
-        if (srcParentGate != dstParentGate) {
-            dstParentGate->addWire(this);
-        }
+    if (dstParentGate && srcParentGate != dstParentGate) {
+        dstParentGate->addWire(this);
     }
 
-    // Calculate initial wire path
     recalculatePath();
-
     update();
 }
 
@@ -67,15 +58,11 @@ void Wire::update() {
         bool newSourceState = sourcePin_->getState();
         if (state_ != newSourceState) {
             state_ = newSourceState;
-            // The destPin's state is implicitly updated via its sourcePin.
-            // GatePin::setState on the output sourcePin should mark destPin's parent gate dirty.
-            // Marking destPin's parent gate dirty here ensures visual/logic update propagation.
             if (destPin_->getParentGate()) {
                  destPin_->getParentGate()->markDirty();
             }
         }
-    } catch (const std::exception& e) { // Catching std::exception for broader coverage
-        std::cerr << "Wire::update() error: Pin access or other error. " << e.what() << std::endl;
+    } catch (const std::exception& e) {
         state_ = false;
     }
 }
@@ -94,18 +81,14 @@ void Wire::draw() const {
             thickness = Config::WIRE_THICKNESS_SELECTED;
         }
 
-        // Draw the wire path
         drawWirePath(controlPoints_, wireColorToUse, thickness);
 
-        // If selected, draw control points
         if (isSelected) {
             for (const auto& point : controlPoints_) {
                 DrawCircleV(point, 4.0f, YELLOW);
             }
         }
-
     } catch (const std::exception& e) {
-         std::cerr << "Wire::draw() error: " << e.what() << std::endl;
     }
 }
 
@@ -217,8 +200,6 @@ void Wire::recalculatePath() {
     Vector2 startPos = sourcePin_->getAbsolutePosition();
     Vector2 endPos = destPin_->getAbsolutePosition();
 
-    // Use the WireRouter to calculate a path
-    // Pass true for isDestInput since we know destPin_ is an input pin (enforced in constructor)
     WireRouter router;
     controlPoints_ = router.calculatePath(startPos, endPos, true, Config::GRID_SIZE);
 }
@@ -288,20 +269,15 @@ bool Wire::isDraggingPoint() const {
 void Wire::onGateDeleted(LogicGate* deletedGate) {
     bool changed = false;
     if (sourcePin_ && sourcePin_->getParentGate() == deletedGate) {
-        // Source gate deleted. Wire is now dangling. sourcePin_ pointer will be invalid.
         sourcePin_ = nullptr;
         changed = true;
     }
     if (destPin_ && destPin_->getParentGate() == deletedGate) {
-        // Destination gate deleted. Wire is now dangling. destPin_ pointer will be invalid.
         destPin_ = nullptr;
         changed = true;
     }
 
     if (changed) {
         this->state_ = false;
-        // The wire object itself should be marked for deletion by the main simulation loop
-        // or by LogicGate::handleGateDeletion, as it's no longer valid.
-        // This function just updates its internal state to reflect it's broken.
     }
 }
