@@ -90,7 +90,6 @@ void UIManager::render() {
         // Highlight potential connection pins
         gateRenderer->renderWirePreview(
             wireStartPin,
-            wirePreviewEndPos,
             simulator->getGates(),
             worldMousePos
         );
@@ -427,7 +426,7 @@ void UIManager::handleWindowResize(int newWidth, int newHeight) {
     };
 
     // Notify the palette manager of the window resize
-    paletteManager->handleWindowResize(newHeight);
+    paletteManager->handleWindowResize();
 }
 
 Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position) {

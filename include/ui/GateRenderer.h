@@ -16,7 +16,7 @@ public:
     void renderGates(const std::vector<std::unique_ptr<LogicGate>>& gates, const Camera2D& camera);
     void renderGate(const LogicGate* gate);
     void renderPinHighlights(const LogicGate* gate, Vector2 mousePos, bool isDrawingWire, const GatePin* wireStartPin);
-    void renderWirePreview(const GatePin* startPin, Vector2 endPos,
+    void renderWirePreview(const GatePin* startPin,
                           const std::vector<std::unique_ptr<LogicGate>>& gates,
                           Vector2 mousePos);
 

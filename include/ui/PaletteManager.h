@@ -70,7 +70,7 @@ public:
     GateType getDraggedGateType() const;
     Vector2 getCurrentDragPosition() const;
     std::unique_ptr<LogicGate> createGateInstance(GateType type, Vector2 position);
-    void handleWindowResize(int newHeight);
+    void handleWindowResize();
 };
 
 #endif // PALETTE_MANAGER_H

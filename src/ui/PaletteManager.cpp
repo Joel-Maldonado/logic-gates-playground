@@ -163,7 +163,7 @@ Rectangle PaletteManager::getPaletteBounds() const {
     return {0, 0, Config::PALETTE_WIDTH, (float)GetScreenHeight()};
 }
 
-void PaletteManager::handleWindowResize(int newHeight) {
+void PaletteManager::handleWindowResize() {
     // No need to update the palette items' positions as they are fixed
     // The palette will automatically extend to the new window height
 }
@@ -432,7 +432,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
                 Vector2 rightPoint = {rightX, bounds.y + bounds.height/2};
 
                 // Calculate curve parameters for the left (input) side
-                int segments = 10; // Fewer segments for the icon
+                const int segments = 10; // Fewer segments for the icon
                 float curveDepth = bounds.height * 0.2f; // Increase curve depth for more pronounced curve
 
                 // Create points for the curved left side
@@ -479,7 +479,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
                 Vector2 rightPoint = {rightX, bounds.y + bounds.height/2};
 
                 // Calculate curve parameters for the left (input) side
-                int segments = 10; // Fewer segments for the icon
+                const int segments = 10; // Fewer segments for the icon
                 float curveDepth = bounds.height * 0.2f; // Increase curve depth for more pronounced curve
                 float curveOffset = bounds.height * 0.2f; // Offset for the second curve
 
@@ -655,7 +655,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
                 Vector2 rightPoint = {rightX, bounds.y + bounds.height/2};
 
                 // Calculate curve parameters for the left (input) side
-                int segments = 10; // Fewer segments for the icon
+                const int segments = 10; // Fewer segments for the icon
                 float curveDepth = bounds.height * 0.18f;
 
                 // Create points for the curved left side
@@ -708,7 +708,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
                 Vector2 rightPoint = {rightX, bounds.y + bounds.height/2};
 
                 // Calculate curve parameters for the left (input) side
-                int segments = 10; // Fewer segments for the icon
+                const int segments = 10; // Fewer segments for the icon
                 float curveDepth = bounds.height * 0.3f;
                 float curveOffset = bounds.height * 0.18f;
 

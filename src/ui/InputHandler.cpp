@@ -208,7 +208,7 @@ bool InputHandler::handlePaletteClick(Vector2 rawMousePos) {
 }
 
 bool InputHandler::handleCanvasClick(Vector2 worldMousePos) {
-    return handleGateAndWireInteraction(worldMousePos) || handleGatePlacement(worldMousePos);
+    return handleGateAndWireInteraction(worldMousePos) || handleGatePlacement();
 }
 
 bool InputHandler::handleWireCompletion(Vector2 worldMousePos) {
@@ -294,7 +294,7 @@ bool InputHandler::handleGateAndWireInteraction(Vector2 worldMousePos) {
     return false;
 }
 
-bool InputHandler::handleGatePlacement(Vector2 worldMousePos) {
+bool InputHandler::handleGatePlacement() {
     // This method is kept for compatibility but is no longer used for direct placement
     // Gates are now placed only via drag-and-drop
     return false;

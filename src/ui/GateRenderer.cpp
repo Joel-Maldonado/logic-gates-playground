@@ -424,7 +424,7 @@ void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color o
     Vector2 rightPoint = {rightX, center.y};
 
     // Parameters for the curved left side
-    int segments = 20;
+    const int segments = 20;
     float curveDepth = bounds.height * 0.15f;
     Vector2 curvePoints[segments + 1];
 
@@ -480,7 +480,7 @@ void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color 
     float curveDepth = bounds.height * 0.15f;
 
     // Draw the second curved line with the same parabolic shape
-    int segments = 20;
+    const int segments = 20;
     Vector2 prevPoint = {leftX - curveOffset, bounds.y}; // Top point of second curve
 
     for (int i = 1; i <= segments; i++) {
@@ -551,7 +551,7 @@ void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color 
     DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
 }
 
-void GateRenderer::renderWirePreview(const GatePin* startPin, Vector2 endPos,
+void GateRenderer::renderWirePreview(const GatePin* startPin,
                                     const std::vector<std::unique_ptr<LogicGate>>& gates,
                                     Vector2 mousePos) {
     if (!startPin) {

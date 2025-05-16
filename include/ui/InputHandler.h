@@ -26,7 +26,7 @@ public:
     bool handleCanvasClick(Vector2 worldMousePos);
     bool handleWireCompletion(Vector2 worldMousePos);
     bool handleGateAndWireInteraction(Vector2 worldMousePos);
-    bool handleGatePlacement(Vector2 worldMousePos);
+    bool handleGatePlacement();
     bool handlePaletteDragStart(Vector2 rawMousePos);
     void handlePaletteDrag(Vector2 rawMousePos);
     bool handlePaletteDrop(Vector2 rawMousePos, Vector2 worldMousePos);
