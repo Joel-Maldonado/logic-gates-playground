@@ -2,7 +2,7 @@
 #include "core/LogicGate.h"
 #include "core/Wire.h"
 #include "app/Config.h"
-#include "raymath.h"
+#include <raymath.h>
 #include <algorithm>
 #include <iostream>
 

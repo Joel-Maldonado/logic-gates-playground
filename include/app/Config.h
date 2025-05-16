@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "raylib.h"
+#include <raylib.h>
 #include <string>
 
 namespace Config {

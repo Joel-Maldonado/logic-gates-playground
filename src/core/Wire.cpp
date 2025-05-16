@@ -1,8 +1,8 @@
 #include "core/Wire.h"
 #include "core/LogicGate.h"
-#include "raylib.h"
+#include <raylib.h>
 #include "rlgl.h"
-#include "raymath.h"
+#include <raymath.h>
 #include "ui/WireRouter.h"
 #include "app/Config.h"
 #include <stdexcept>

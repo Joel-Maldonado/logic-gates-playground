@@ -1,6 +1,6 @@
 #include "ui/GateRenderer.h"
 #include "app/Config.h"
-#include "raymath.h"
+#include <raymath.h>
 #include "core/DerivedGates.h"
 #include "core/InputSource.h"
 #include "core/OutputSink.h"

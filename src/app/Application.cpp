@@ -1,6 +1,6 @@
 #include "app/Application.h"
 #include "app/Config.h"
-#include "raylib.h"
+#include <raylib.h>
 
 Application::Application()
     : isRunning(false),

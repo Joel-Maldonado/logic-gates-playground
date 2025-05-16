@@ -1,8 +1,8 @@
 #ifndef PALETTE_MANAGER_H
 #define PALETTE_MANAGER_H
 
-#include "raylib.h"
-#include "raymath.h"
+#include <raylib.h>
+#include <raymath.h>
 #include "simulation/CircuitSimulator.h"
 #include <vector>
 #include <string>

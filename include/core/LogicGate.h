@@ -5,7 +5,7 @@
 #include <vector>
 #include <stdexcept>
 #include <algorithm>
-#include "raylib.h"
+#include <raylib.h>
 #include "core/GatePin.h"
 
 class Wire;

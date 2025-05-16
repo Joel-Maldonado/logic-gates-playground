@@ -1,7 +1,7 @@
 #ifndef GATE_PIN_H
 #define GATE_PIN_H
 
-#include "raylib.h"
+#include <raylib.h>
 #include <vector>
 
 class LogicGate;

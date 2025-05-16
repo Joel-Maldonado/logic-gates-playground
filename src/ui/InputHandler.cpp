@@ -1,7 +1,7 @@
 #include "ui/InputHandler.h"
 #include "app/Config.h"
 #include "core/InputSource.h"
-#include "raymath.h"
+#include <raymath.h>
 
 InputHandler::InputHandler(std::shared_ptr<CircuitSimulator> sim, UIManager* ui)
     : simulator(sim), uiManager(ui) {

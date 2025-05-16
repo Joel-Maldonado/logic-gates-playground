@@ -1,6 +1,6 @@
 #include "ui/UIManager.h"
 #include "app/Config.h"
-#include "raymath.h"
+#include <raymath.h>
 
 UIManager::UIManager(std::shared_ptr<CircuitSimulator> sim)
     : isDrawingWire(false),

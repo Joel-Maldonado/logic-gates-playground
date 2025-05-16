@@ -1,12 +1,12 @@
 #include "core/LogicGate.h"
 #include "core/Wire.h"
-#include "raylib.h"
+#include <raylib.h>
+#include <raymath.h>
 #include <stdexcept>
 #include <utility>
 #include <algorithm>
 #include <iostream>
 #include <set>
-#include "raymath.h"
 
 LogicGate::LogicGate(std::string gateId, Vector2 pos, float w, float h)
     : id(std::move(gateId)), position(pos), width(w), height(h), isDirty(true), isSelected(false) {

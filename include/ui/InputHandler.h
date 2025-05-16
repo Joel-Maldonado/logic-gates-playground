@@ -1,7 +1,7 @@
 #ifndef INPUT_HANDLER_H
 #define INPUT_HANDLER_H
 
-#include "raylib.h"
+#include <raylib.h>
 #include "ui/UIManager.h"
 #include "simulation/CircuitSimulator.h"
 #include <memory>

@@ -3,7 +3,7 @@
 
 #include "core/Wire.h"
 #include "ui/WireRouter.h"
-#include "raylib.h"
+#include <raylib.h>
 #include <vector>
 #include <memory>
 

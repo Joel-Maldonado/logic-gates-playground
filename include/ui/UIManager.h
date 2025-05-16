@@ -1,7 +1,7 @@
 #ifndef UI_MANAGER_H
 #define UI_MANAGER_H
 
-#include "raylib.h"
+#include <raylib.h>
 #include "simulation/CircuitSimulator.h"
 #include "ui/PaletteManager.h"
 #include "ui/GateRenderer.h"

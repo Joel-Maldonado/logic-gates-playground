@@ -1,5 +1,5 @@
 #include "core/OutputSink.h"
-#include "raylib.h"
+#include <raylib.h>
 #include <utility>
 
 namespace {

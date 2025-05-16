@@ -3,7 +3,7 @@
 
 #include "core/LogicGate.h"
 #include "ui/PaletteManager.h"
-#include "raylib.h"
+#include <raylib.h>
 #include <vector>
 #include <memory>
 

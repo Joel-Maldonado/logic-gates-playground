@@ -1,5 +1,5 @@
 #include "core/DerivedGates.h"
-#include "raylib.h"
+#include <raylib.h>
 
 void DrawPlaceholderGate(LogicGate* gate, const char* label) {
     Rectangle bounds = gate->getBounds();

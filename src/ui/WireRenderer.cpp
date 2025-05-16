@@ -1,7 +1,7 @@
 #include "ui/WireRenderer.h"
 #include "app/Config.h"
 #include "core/GatePin.h"
-#include "raymath.h"
+#include <raymath.h>
 
 WireRenderer::WireRenderer() {
 }

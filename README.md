@@ -1,86 +1,61 @@
 # Logic Gates Playground
 
-A visual interactive application for designing and simulating digital logic circuits. Build circuits using standard logic gates, connect them with wires, and see real-time signal propagation.
+A simple, interactive playground for experimenting with digital logic gates and circuits. This project provides a visual environment where you can create, connect, and simulate basic logic circuits, primarily built as a learning experience.
 
-![Logic Gates Playground Screenshot](docs/screenshot.png)
+![Logic Gates Playground](docs/screenshot.png)
 
-## Features
+## Overview
 
-- **Interactive Canvas**: Drag and drop gates, connect wires, and see your circuit in action
-- **Real-time Simulation**: Watch signals propagate through your circuit as you interact with inputs
-- **Logic Gate Library**:
-  - Basic gates: AND, OR, XOR, NOT
-  - Derived gates: NAND, NOR, XNOR
-  - I/O components: Input sources and output sinks
-- **Wire Management**: Automatic wire routing with control points for custom paths
-- **Selection and Editing**: Select, move, and delete gates and wires
-- **Visual Feedback**: Color-coded signals and components for intuitive understanding
+- Create various logic gates (AND, OR, XOR, NOT, NAND, NOR, XNOR)
+- Add input sources and output sinks
+- Connect gates with wires to build circuits
+- Drag and drop components for easy circuit design
 
-## Dependencies
 
-- [raylib](https://www.raylib.com/) (v5.5+) - A simple and easy-to-use library for game development
-- C++17 compatible compiler (g++, clang, etc.)
+## Requirements
 
-## Installation
+- C++17 compatible compiler
+- CMake 3.14 or higher
+- [raylib](https://www.raylib.com/) (automatically fetched by CMake if not found)
 
-### Prerequisites
+## Building from Source
 
-1. Install raylib:
-
-   **macOS (using Homebrew)**:
-   ```bash
-   brew install raylib
-   ```
-
-   **Linux**:
-   ```bash
-   sudo apt install libasound2-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev libglu1-mesa-dev libxcursor-dev libxinerama-dev
-   git clone https://github.com/raysan5/raylib.git
-   cd raylib/src
-   make PLATFORM=PLATFORM_DESKTOP
-   sudo make install
-   ```
-
-   **Windows**: See [raylib wiki](https://github.com/raysan5/raylib/wiki/Working-on-Windows) for detailed instructions.
-
-2. Clone this repository:
-   ```bash
-   git clone https://github.com/yourusername/logic-gates-playground.git
-   cd logic-gates-playground
-   ```
-
-## Building
-
-Use the provided Makefile to build the project:
+### On Linux/macOS
 
 ```bash
-make
+# Clone the repository
+git clone https://github.com/username/logic-gates-playground.git
+cd logic-gates-playground
+
+# Build using the provided script
+chmod +x build.sh
+./build.sh
+
+# Run the application
+./build/bin/logic-gates-playground
 ```
 
-This will compile the application and create an executable named `main`.
+### On Windows
 
-## Usage
+```bash
+# Clone the repository
+git clone https://github.com/username/logic-gates-playground.git
+cd logic-gates-playground
 
-1. **Launch the application**:
-   ```bash
-   ./main
-   ```
+# Build using the provided script
+build.bat
 
-2. **Create a circuit**:
-   - Select gates from the palette on the left side
-   - Click and drag to place gates on the canvas
-   - Connect gates by clicking on an output pin and dragging to an input pin
-   - Toggle input sources by clicking on them
+# Run the application
+build\bin\logic-gates-playground.exe
+```
 
-3. **Interact with the canvas**:
-   - Pan: Middle mouse button or right-click and drag
-   - Select: Left-click on gates or wires
-   - Move: Click and drag selected gates
-   - Delete: Press Delete key with a component selected
+### Manual Build
 
-## Project Structure
+```bash
+mkdir -p build
+cd build
+cmake ..
+cmake --build . --config Release
+```
 
-- **Core** (`src/core/`): Fundamental components like gates, pins, and wires
-- **Simulation** (`src/simulation/`): Circuit simulation logic
-- **UI** (`src/ui/`): User interface components and rendering
-- **App** (`src/app/`): Application initialization and main loop
+The executable will be located in the `build/bin` directory.

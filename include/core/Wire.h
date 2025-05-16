@@ -2,7 +2,7 @@
 #define WIRE_H
 
 #include "core/LogicGate.h"
-#include "raylib.h"
+#include <raylib.h>
 #include <vector>
 
 class Wire {

@@ -1,5 +1,5 @@
 #include "core/InputSource.h"
-#include "raylib.h"
+#include <raylib.h>
 #include <utility>
 
 namespace { // Anonymous namespace for helpers and constants
