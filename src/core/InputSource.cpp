@@ -53,7 +53,7 @@ namespace { // Anonymous namespace for helpers and constants
             DrawCircleLines(pinPos.x, pinPos.y, CONNECTOR_PIN_RADIUS, outlineColorToUse);
         }
     }
-} // end anonymous namespace
+}
 
 InputSource::InputSource(std::string id, Vector2 pos, Vector2 visualSize, std::string visualLabel)
     : LogicGate(std::move(id), pos, visualSize.x, visualSize.y),

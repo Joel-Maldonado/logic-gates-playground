@@ -36,7 +36,7 @@ void OutputSink::draw() {
     Rectangle bounds = getBounds();
     Vector2 center = { bounds.x + radius, bounds.y + radius };
 
-    // Draw the main body
+    // Draw main body
     DrawCircleV(center, radius, active ? style.fillOn : style.fillOff);
     
     // Draw outline (thicker if selected)

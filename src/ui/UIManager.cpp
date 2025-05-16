@@ -216,16 +216,13 @@ void UIManager::updateDragging(Vector2 mousePos) {
         return;
     }
 
-    // Calculate the raw position based on mouse position and drag offset
-    Vector2 rawPosition = Vector2Subtract(mousePos, dragStartOffset);
-
-    // Snap the position to the grid in real-time if grid snapping is enabled
-    Vector2 snappedPosition = snapToGrid(rawPosition);
+    // Calculate the position based on mouse position and drag offset
+    Vector2 position = Vector2Subtract(mousePos, dragStartOffset);
 
     // Check for wire alignment snapping
-    Vector2 alignedPosition = checkWireAlignmentSnapping(selectedComponent, snappedPosition);
+    Vector2 alignedPosition = checkWireAlignmentSnapping(selectedComponent, position);
 
-    // Update the component's position with the snapped and aligned position
+    // Update the component's position with the aligned position
     selectedComponent->setPosition(alignedPosition);
 
     // Update all wire paths connected to this component
@@ -234,17 +231,16 @@ void UIManager::updateDragging(Vector2 mousePos) {
 
 void UIManager::stopDragging() {
     if (isDraggingComponent && selectedComponent) {
-        // Snap the component to the grid
+        // Get the current position
         Vector2 currentPos = selectedComponent->getPosition();
-        Vector2 snappedPos = snapToGrid(currentPos);
 
         // Check for wire alignment snapping
-        Vector2 alignedPos = checkWireAlignmentSnapping(selectedComponent, snappedPos);
+        Vector2 alignedPos = checkWireAlignmentSnapping(selectedComponent, currentPos);
 
-        // Set the snapped and aligned position
+        // Set the aligned position
         selectedComponent->setPosition(alignedPos);
 
-        // Update wire paths after snapping
+        // Update wire paths after alignment
         updateWirePathsForComponent(selectedComponent);
     }
 
@@ -417,19 +413,6 @@ void UIManager::updateWirePathsForComponent(LogicGate* component) {
     }
 }
 
-Vector2 UIManager::snapToGrid(Vector2 position) {
-    // Return original position if grid snapping is disabled or grid size is invalid
-    if (!Config::GRID_SNAPPING_ENABLED || Config::GRID_SIZE <= 0) {
-        return position;
-    }
-
-    // Round to nearest grid point
-    Vector2 snappedPos;
-    snappedPos.x = round(position.x / Config::GRID_SIZE) * Config::GRID_SIZE;
-    snappedPos.y = round(position.y / Config::GRID_SIZE) * Config::GRID_SIZE;
-
-    return snappedPos;
-}
 
 void UIManager::handleWindowResize(int newWidth, int newHeight) {
     // Update camera offset to match the new center of the screen

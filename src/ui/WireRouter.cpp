@@ -7,15 +7,8 @@
 WireRouter::WireRouter() {
 }
 
-std::vector<Vector2> WireRouter::calculatePath(Vector2 startPos, Vector2 endPos, bool isDestInput, float gridSize) {
+std::vector<Vector2> WireRouter::calculatePath(Vector2 startPos, Vector2 endPos, bool isDestInput) {
     std::vector<Vector2> path;
-
-    // Apply grid snapping if enabled
-    if (Config::GRID_SNAPPING_ENABLED && gridSize > 0) {
-        startPos = snapToGrid(startPos, gridSize);
-        endPos = snapToGrid(endPos, gridSize);
-    }
-
     path.push_back(startPos);
 
     // Use direct straight line for aligned points
@@ -25,7 +18,7 @@ std::vector<Vector2> WireRouter::calculatePath(Vector2 startPos, Vector2 endPos,
     }
 
     // Start with small horizontal segment from output pin to prevent visual clipping
-    float horizontalOffset = gridSize > 0 ? gridSize : 10.0f;
+    const float horizontalOffset = 10.0f;
     Vector2 initialHorizontalPoint = { startPos.x + horizontalOffset, startPos.y };
     path.push_back(initialHorizontalPoint);
 
@@ -57,22 +50,16 @@ std::vector<Vector2> WireRouter::calculatePath(Vector2 startPos, Vector2 endPos,
     return path;
 }
 
-std::vector<Vector2> WireRouter::calculatePreviewPath(Vector2 startPos, Vector2 endPos, bool isDestInput, float gridSize) {
-    return calculatePath(startPos, endPos, isDestInput, gridSize);
+std::vector<Vector2> WireRouter::calculatePreviewPath(Vector2 startPos, Vector2 endPos, bool isDestInput) {
+    return calculatePath(startPos, endPos, isDestInput);
 }
 
-std::vector<Vector2> WireRouter::adjustPathPoint(const std::vector<Vector2>& path, int pointIndex, Vector2 newPosition, float gridSize) {
+std::vector<Vector2> WireRouter::adjustPathPoint(const std::vector<Vector2>& path, int pointIndex, Vector2 newPosition) {
     if (path.empty() || pointIndex < 0 || pointIndex >= static_cast<int>(path.size())) {
         return path;
     }
 
     std::vector<Vector2> newPath = path;
-
-    // Apply grid snapping if enabled
-    if (Config::GRID_SNAPPING_ENABLED && gridSize > 0) {
-        newPosition = snapToGrid(newPosition, gridSize);
-    }
-
     newPath[pointIndex] = newPosition;
 
     // For intermediate points, maintain orthogonal segments by adjusting adjacent points
@@ -92,18 +79,6 @@ std::vector<Vector2> WireRouter::adjustPathPoint(const std::vector<Vector2>& pat
     }
 
     return simplifyPath(newPath);
-}
-
-Vector2 WireRouter::snapToGrid(Vector2 point, float gridSize) {
-    if (!Config::GRID_SNAPPING_ENABLED || gridSize <= 0) {
-        return point;
-    }
-
-    // Round to nearest grid point
-    point.x = round(point.x / gridSize) * gridSize;
-    point.y = round(point.y / gridSize) * gridSize;
-
-    return point;
 }
 
 bool WireRouter::shouldRouteHorizontalFirst(Vector2 startPos, Vector2 endPos) {

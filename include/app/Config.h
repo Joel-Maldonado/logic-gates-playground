@@ -18,7 +18,6 @@ namespace Config {
 
     // Grid settings
     constexpr bool GRID_ENABLED = true;        // Controls whether the grid is visually displayed
-    constexpr bool GRID_SNAPPING_ENABLED = false;  // Controls whether components snap to grid
     constexpr float GRID_SIZE = 25.0f;
     constexpr float GRID_LINE_THICKNESS = 1.0f;
     constexpr float GRID_OPACITY = 0.2f;  // 0.0 to 1.0

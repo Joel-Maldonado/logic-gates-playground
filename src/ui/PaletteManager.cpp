@@ -8,7 +8,7 @@
 PaletteManager::PaletteManager(std::shared_ptr<CircuitSimulator> sim)
     : selectedGateType(GateType::NONE), simulator(sim),
       isDraggingGate(false), draggedGateType(GateType::NONE),
-      dragStartPos({0, 0}), currentDragPos({0, 0}), snappedWorldPos({0, 0}) {
+      dragStartPos({0, 0}), currentDragPos({0, 0}) {
 }
 
 void PaletteManager::initialize() {
@@ -92,16 +92,13 @@ void PaletteManager::render(const Camera2D& camera) {
         // Get the world position for the mouse
         Vector2 worldPos = GetScreenToWorld2D(currentDragPos, camera);
 
-        // Get the snapped position for the preview and store it for later use
-        snappedWorldPos = getSnappedDragPosition(worldPos);
-
         // Convert back to screen coordinates for drawing
-        Vector2 snappedScreenPos = GetWorldToScreen2D(snappedWorldPos, camera);
+        Vector2 screenPos = GetWorldToScreen2D(worldPos, camera);
 
-        // Draw a preview of the gate at the snapped position
+        // Draw a preview of the gate at the position
         Rectangle previewBounds = {
-            snappedScreenPos.x - Config::DRAG_PREVIEW_SIZE / 2,
-            snappedScreenPos.y - Config::DRAG_PREVIEW_SIZE / 2,
+            screenPos.x - Config::DRAG_PREVIEW_SIZE / 2,
+            screenPos.y - Config::DRAG_PREVIEW_SIZE / 2,
             Config::DRAG_PREVIEW_SIZE,
             Config::DRAG_PREVIEW_SIZE
         };
@@ -112,13 +109,7 @@ void PaletteManager::render(const Camera2D& camera) {
         drawGateIcon(draggedGateType, previewBounds, previewColor);
 
         // Draw a "+" symbol to indicate placement
-        DrawText("+", snappedScreenPos.x - 5, snappedScreenPos.y - 10, 20, WHITE);
-
-        // Draw a faint line from the mouse cursor to the snapped position
-        float distance = Vector2Distance(currentDragPos, snappedScreenPos);
-        if (distance > 2.0f) {
-            DrawLineEx(currentDragPos, snappedScreenPos, 1.0f, Fade(LIGHTGRAY, 0.5f));
-        }
+        DrawText("+", screenPos.x - 5, screenPos.y - 10, 20, WHITE);
     }
 }
 
@@ -208,14 +199,8 @@ LogicGate* PaletteManager::endDraggingGate(Vector2 worldPos) {
         return nullptr;
     }
 
-    // Adjust the placement position to be one grid unit left and up from the preview position
-    Vector2 adjustedPlacementPos = {
-        snappedWorldPos.x - Config::GRID_SIZE,
-        snappedWorldPos.y - Config::GRID_SIZE
-    };
-
-    // Create the gate at the adjusted position
-    auto newGate = createGateInstance(draggedGateType, adjustedPlacementPos);
+    // Create the gate at the world position
+    auto newGate = createGateInstance(draggedGateType, worldPos);
     LogicGate* rawPtr = nullptr;
 
     if (newGate) {
@@ -246,23 +231,7 @@ Vector2 PaletteManager::getCurrentDragPosition() const {
     return currentDragPos;
 }
 
-Vector2 PaletteManager::getStoredSnappedPosition() const {
-    return snappedWorldPos;
-}
 
-Vector2 PaletteManager::getSnappedDragPosition(Vector2 worldPos) const {
-    // Return original position if grid snapping is disabled or grid size is invalid
-    if (!Config::GRID_SNAPPING_ENABLED || Config::GRID_SIZE <= 0) {
-        return worldPos;
-    }
-
-    // Round to nearest grid point
-    Vector2 snappedPos;
-    snappedPos.x = round(worldPos.x / Config::GRID_SIZE) * Config::GRID_SIZE;
-    snappedPos.y = round(worldPos.y / Config::GRID_SIZE) * Config::GRID_SIZE;
-
-    return snappedPos;
-}
 
 // Helper method to create a gate instance of a specific type
 std::unique_ptr<LogicGate> PaletteManager::createGateInstance(GateType type, Vector2 position) {

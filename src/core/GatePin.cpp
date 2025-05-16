@@ -180,8 +180,8 @@ void GatePin::disconnectWire(Wire* wireToDisconnect) {
     if (!wireToDisconnect) return;
 
     if (type_ == PinType::INPUT_PIN) {
-        // This input pin is the destination of wireToDisconnect.
-        // If this wire is the one connected, nullify our source.
+        // This input pin is the destination of wireToDisconnect
+        // If this wire is the one connected nullify the source
         if (sourceOutputPin_ && wireToDisconnect->getDestPin() == this &&
             wireToDisconnect->getSourcePin() == sourceOutputPin_) {
             sourceOutputPin_ = nullptr;
@@ -190,8 +190,8 @@ void GatePin::disconnectWire(Wire* wireToDisconnect) {
             }
         }
     } else { // PinType::OUTPUT_PIN
-        // This output pin is the source of wireToDisconnect.
-        // Remove the wire's destination pin from our list of dependents.
+        // This output pin is the source of wireToDisconnect
+        // Remove the wires destination pin from list of dependents
         if (wireToDisconnect->getSourcePin() == this) {
             GatePin* dependentDestPin = wireToDisconnect->getDestPin();
             if (dependentDestPin) {

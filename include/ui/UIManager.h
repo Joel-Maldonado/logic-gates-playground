@@ -80,7 +80,6 @@ public:
     bool isPanningActive() const;
 
     void updateWirePathsForComponent(LogicGate* component);
-    Vector2 snapToGrid(Vector2 position);
     Vector2 checkWireAlignmentSnapping(LogicGate* gate, Vector2 position);
     void handleWindowResize(int newWidth, int newHeight);
 };

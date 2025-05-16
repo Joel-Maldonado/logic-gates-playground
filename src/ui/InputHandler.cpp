@@ -319,8 +319,6 @@ void InputHandler::handlePaletteDrag(Vector2 rawMousePos) {
 bool InputHandler::handlePaletteDrop(Vector2 rawMousePos, Vector2 worldMousePos) {
     // Only place a gate if we're dropping on the canvas
     if (CheckCollisionPointRec(rawMousePos, uiManager->getCanvasBounds())) {
-        // The PaletteManager will use its stored snapped position internally
-        // so we don't need to pass it again
         LogicGate* newGate = uiManager->getPaletteManager().endDraggingGate(worldMousePos);
         if (newGate) {
             // Select the newly placed gate

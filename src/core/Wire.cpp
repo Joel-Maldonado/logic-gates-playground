@@ -102,13 +102,11 @@ void Wire::drawWirePath(const std::vector<Vector2>& points, Color color, float t
         DrawLineEx(points[i], points[i + 1], thickness, color);
     }
 
-    // Draw a small arrow indicating signal direction if the wire is long enough
+    // Draw a small for the direction of signal direction if the wire is long enough
     if (points.size() >= 2) {
-        // Find the last segment
         Vector2 lastSegmentStart = points[points.size() - 2];
         Vector2 lastSegmentEnd = points[points.size() - 1];
 
-        // Calculate distance of the last segment
         float distance = Vector2Distance(lastSegmentStart, lastSegmentEnd);
 
         if (distance > 30.0f) {
@@ -201,7 +199,7 @@ void Wire::recalculatePath() {
     Vector2 endPos = destPin_->getAbsolutePosition();
 
     WireRouter router;
-    controlPoints_ = router.calculatePath(startPos, endPos, true, Config::GRID_SIZE);
+    controlPoints_ = router.calculatePath(startPos, endPos, true);
 }
 
 bool Wire::startDraggingPoint(Vector2 mousePos, float tolerance) {
@@ -209,7 +207,7 @@ bool Wire::startDraggingPoint(Vector2 mousePos, float tolerance) {
         return false;
     }
 
-    // Check if mouse is over a control point (skip first and last points which are attached to pins)
+    // Check if mouse is over a control point (skip first and last points which  attached to pins)
     for (size_t i = 1; i < controlPoints_.size() - 1; i++) {
         if (Vector2Distance(mousePos, controlPoints_[i]) <= tolerance) {
             isDraggingPoint_ = true;
@@ -227,15 +225,8 @@ void Wire::updateDraggedPoint(Vector2 mousePos) {
         return;
     }
 
-    // Snap to grid if enabled and grid snapping is enabled
-    Vector2 snappedPos = mousePos;
-    if (Config::GRID_SNAPPING_ENABLED && Config::GRID_SIZE > 0) {
-        snappedPos.x = round(mousePos.x / Config::GRID_SIZE) * Config::GRID_SIZE;
-        snappedPos.y = round(mousePos.y / Config::GRID_SIZE) * Config::GRID_SIZE;
-    }
-
     // Update the control point position
-    controlPoints_[draggedPointIndex_] = snappedPos;
+    controlPoints_[draggedPointIndex_] = mousePos;
 
     // Adjust adjacent segments to maintain orthogonal routing
     if (draggedPointIndex_ > 0 && draggedPointIndex_ < static_cast<int>(controlPoints_.size()) - 1) {
@@ -243,16 +234,16 @@ void Wire::updateDraggedPoint(Vector2 mousePos) {
         // We don't need nextPoint for the calculation, just for updating
 
         // Determine if the previous segment is horizontal or vertical
-        bool isPrevHorizontal = fabs(prevPoint.y - snappedPos.y) < 0.001f;
+        bool isPrevHorizontal = fabs(prevPoint.y - mousePos.y) < 0.001f;
 
         if (isPrevHorizontal) {
             // Previous segment is horizontal, so next segment must be vertical
             // Keep the x-coordinate of the dragged point for the next point
-            controlPoints_[draggedPointIndex_ + 1].x = snappedPos.x;
+            controlPoints_[draggedPointIndex_ + 1].x = mousePos.x;
         } else {
             // Previous segment is vertical, so next segment must be horizontal
             // Keep the y-coordinate of the dragged point for the next point
-            controlPoints_[draggedPointIndex_ + 1].y = snappedPos.y;
+            controlPoints_[draggedPointIndex_ + 1].y = mousePos.y;
         }
     }
 }

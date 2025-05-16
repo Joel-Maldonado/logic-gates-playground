@@ -65,7 +65,7 @@ void WireRenderer::renderWirePathPreview(const std::vector<Vector2>& path, Color
 }
 
 std::vector<Vector2> WireRenderer::calculatePreviewPath(Vector2 startPos, Vector2 endPos, bool isDestInput) {
-    return router_.calculatePreviewPath(startPos, endPos, isDestInput, Config::GRID_SIZE);
+    return router_.calculatePreviewPath(startPos, endPos, isDestInput);
 }
 
 Color WireRenderer::getWireColor(const Wire* wire) const {
