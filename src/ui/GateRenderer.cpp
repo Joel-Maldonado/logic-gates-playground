@@ -193,23 +193,27 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
             fillColor = Config::Colors::NAND_GATE;
             renderAndGateSymbol(bounds, fillColor, outlineColor, outlineThickness); // Draws "AND"
 
-            // Clear "AND" text
-            const char* oldLabel = "AND";
-            Vector2 oldTextSize = MeasureTextEx(GetFontDefault(), oldLabel, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-            Vector2 oldTextPos = {
-                bounds.x + (bounds.width - oldTextSize.x) / 2.0f,
-                bounds.y + (bounds.height - oldTextSize.y) / 2.0f
-            };
-            DrawRectangleRec(Rectangle{oldTextPos.x, oldTextPos.y, oldTextSize.x, oldTextSize.y}, fillColor);
+            // Draw "NAND" text, ensuring it's centered like the "AND" text in renderAndGateSymbol
+            const char* label = "NAND";
+            Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
 
-            // Draw "NAND" text
-            const char* newLabel = "NAND";
-            Vector2 newTextSize = MeasureTextEx(GetFontDefault(), newLabel, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-            Vector2 newTextPos = {
-                bounds.x + (bounds.width - newTextSize.x) / 2.0f,
-                bounds.y + (bounds.height - newTextSize.y) / 2.0f
+            // Calculate positioning based on the D-shape's actual visual center
+            // This logic must match renderAndGateSymbol's text centering
+            float radius_calc = bounds.height / 2.0f;
+            float flatPartWidth_calc = radius_calc; // Consistent with renderAndGateSymbol's new proportions
+            float visualCenterX_calc = bounds.x + (flatPartWidth_calc + radius_calc) / 2.0f;
+
+            Vector2 textPos = {
+                visualCenterX_calc - textSize.x / 2.0f,
+                bounds.y + (bounds.height - textSize.y) / 2.0f
             };
-            DrawTextEx(GetFontDefault(), newLabel, newTextPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
+
+            // Clear the area where the AND text was drawn by renderAndGateSymbol.
+            // Using the NAND text's position and size with padding is simpler and effective here.
+            DrawRectangle(textPos.x - 2, textPos.y - 2, textSize.x + 4, textSize.y + 4, fillColor); // Use fillColor for background
+
+            // Draw the NAND text
+            DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
 
             // Inversion bubble will be drawn by renderGatePins for the output pin
             break;
@@ -219,27 +223,27 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
             fillColor = Config::Colors::NOR_GATE;
             renderOrGateSymbol(bounds, fillColor, outlineColor, outlineThickness); // Draws "OR"
 
-            // Clear "OR" text (respecting its specific drawing logic in renderOrGateSymbol)
-            const char* oldLabel = "OR";
-            Vector2 oldTextSize = MeasureTextEx(GetFontDefault(), oldLabel, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-            float orActualWidth = bounds.width * 0.8f;
-            float orLeftX = bounds.x + (bounds.width - orActualWidth) / 2.0f;
-            float orCenterX = orLeftX + orActualWidth * 0.4f;
-            Vector2 oldTextPos = {
-                orCenterX - oldTextSize.x / 2.0f,
-                bounds.y + (bounds.height - oldTextSize.y) / 2.0f
-            };
-            DrawRectangleRec(Rectangle{oldTextPos.x -1, oldTextPos.y -1, oldTextSize.x + 2, oldTextSize.y + 2}, fillColor); // Clear with padding as OR drew it
+            // Draw "NOR" text, ensuring it's centered like the "OR" text in renderOrGateSymbol
+            const char* label = "NOR";
+            Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
 
-            // Draw "NOR" text
-            const char* newLabel = "NOR";
-            Vector2 newTextSize = MeasureTextEx(GetFontDefault(), newLabel, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-            // Center new "NOR" label similarly to how "OR" was centered
-            Vector2 newTextPos = {
-                 orCenterX - newTextSize.x / 2.0f,
-                 bounds.y + (bounds.height - newTextSize.y) / 2.0f
+            // Calculate positioning based on the OR shape's actual visual center
+            // This logic must match renderOrGateSymbol's text centering
+            float actualWidth_calc = bounds.width * 0.8f; // Consistent with renderOrGateSymbol
+            float leftX_calc = bounds.x + (bounds.width - actualWidth_calc) / 2.0f; // Consistent
+            float visualCenterX_calc = leftX_calc + actualWidth_calc * 0.5f; // Centering at 50%
+
+            Vector2 textPos = {
+                visualCenterX_calc - textSize.x / 2.0f,
+                bounds.y + (bounds.height - textSize.y) / 2.0f
             };
-            DrawTextEx(GetFontDefault(), newLabel, newTextPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
+
+            // Clear the area where the OR text was drawn by renderOrGateSymbol.
+            // Using the NOR text's position and size with padding is simpler and effective here.
+            DrawRectangle(textPos.x - 1, textPos.y - 1, textSize.x + 2, textSize.y + 2, fillColor); // Use fillColor for background
+
+            // Draw the NOR text
+            DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
 
             // Inversion bubble will be drawn by renderGatePins for the output pin
             break;
@@ -249,28 +253,30 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
             fillColor = Config::Colors::XNOR_GATE;
             renderXorGateSymbol(bounds, fillColor, outlineColor, outlineThickness); // Draws "XOR"
 
-            // Clear "XOR" text (respecting its specific drawing logic)
-            const char* oldLabel = "XOR";
-            Vector2 oldTextSize = MeasureTextEx(GetFontDefault(), oldLabel, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-            float xorActualWidth = bounds.width * 0.8f;
-            float xorLeftX = bounds.x + (bounds.width - xorActualWidth) / 2.0f;
-            float xorCenterX = xorLeftX + xorActualWidth * 0.4f; // Consistent with XOR's label pos
-            Vector2 oldTextPos = {
-                xorCenterX - oldTextSize.x / 2.0f,
-                bounds.y + (bounds.height - oldTextSize.y) / 2.0f
-            };
-            DrawRectangleRec(Rectangle{oldTextPos.x -1, oldTextPos.y-1, oldTextSize.x+2, oldTextSize.y+2}, fillColor); // Clear with padding as XOR drew it
+            // Draw "XNOR" text, ensuring it's centered like the "XOR" text in renderXorGateSymbol
+            const char* label = "XNOR";
+            // Preserve smaller font size for XNOR
+            float fontSize = Config::GATE_LABEL_FONT_SIZE * 0.85f; 
+            Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
 
-            // Draw "XNOR" text (potentially smaller as per original logic)
-            const char* newLabel = "XNOR";
-            float fontSize = Config::GATE_LABEL_FONT_SIZE * 0.85f; // Smaller font for XNOR
-            Vector2 newTextSize = MeasureTextEx(GetFontDefault(), newLabel, fontSize, 1.0f);
-            Vector2 newTextPos = { // Center new "XNOR" label similarly
-                xorCenterX - newTextSize.x / 2.0f,
-                bounds.y + (bounds.height - newTextSize.y) / 2.0f
-            };
-            DrawTextEx(GetFontDefault(), newLabel, newTextPos, fontSize, 1.0f, Config::Colors::GATE_TEXT);
+            // Calculate positioning based on the XOR shape's actual visual center
+            // This logic must match renderXorGateSymbol's text centering
+            float actualWidth_calc = bounds.width * 0.8f; // Consistent with renderXorGateSymbol
+            float leftX_calc = bounds.x + (bounds.width - actualWidth_calc) / 2.0f; // Consistent
+            float visualCenterX_calc = leftX_calc + actualWidth_calc * 0.5f; // Centering at 50%
 
+            Vector2 textPos = {
+                visualCenterX_calc - textSize.x / 2.0f,
+                bounds.y + (bounds.height - textSize.y) / 2.0f
+            };
+
+            // Clear the area where the XOR text was drawn by renderXorGateSymbol.
+            // Using the XNOR text's position and size with padding is simpler and effective here.
+            DrawRectangle(textPos.x - 1, textPos.y - 1, textSize.x + 2, textSize.y + 2, fillColor); // Use fillColor for background
+
+            // Draw the XNOR text
+            DrawTextEx(GetFontDefault(), label, textPos, fontSize, 1.0f, Config::Colors::GATE_TEXT);
+            
             // Inversion bubble will be drawn by renderGatePins for the output pin
             break;
         }
@@ -354,7 +360,9 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
     // Create a D-shaped AND gate with flat left side and semicircle on right
     Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
     float radius = bounds.height / 2.0f;
-    float flatPartWidth = bounds.width - radius;
+    // Adjust flatPartWidth to make the gate more compact.
+    // For example, flatPartWidth = radius makes the total width = 2 * radius = height.
+    float flatPartWidth = radius; 
     int segments = 20; // Number of segments to approximate the semicircle
 
     // Draw the rectangle part (left side)
@@ -410,8 +418,11 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
     // Draw gate label centered
     const char* label = "AND";
     Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
+    // The effective width of the D-shape is flatPartWidth + radius.
+    // The center X of the D-shape is bounds.x + (flatPartWidth + radius) / 2.0f
+    float visualCenterX = bounds.x + (flatPartWidth + radius) / 2.0f;
     Vector2 textPos = {
-        bounds.x + (bounds.width - textSize.x) / 2.0f,
+        visualCenterX - textSize.x / 2.0f,
         bounds.y + (bounds.height - textSize.y) / 2.0f
     };
     DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
