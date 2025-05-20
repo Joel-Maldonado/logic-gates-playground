@@ -24,25 +24,25 @@ namespace Config {
 
     // Gate dimensions
     constexpr float DEFAULT_GATE_WIDTH = 100.0f;
-    constexpr float DEFAULT_GATE_HEIGHT = 60.0f;
-    constexpr float INPUT_OUTPUT_SIZE = 50.0f;
+    constexpr float DEFAULT_GATE_HEIGHT = 70.0f;
+    constexpr float INPUT_OUTPUT_SIZE = 45.0f;
 
     // Pin settings
-    constexpr float PIN_CLICK_RADIUS = 8.0f;
+    constexpr float PIN_CLICK_RADIUS = 7.0f;
     constexpr float PIN_HOVER_TOLERANCE = 8.0f;
-    constexpr float PIN_LABEL_FONT_SIZE = 14.0f;
+    constexpr float PIN_LABEL_FONT_SIZE = 12.0f;
     constexpr float PIN_LABEL_OFFSET = 16.0f;
 
     // Wire settings
-    constexpr float WIRE_THICKNESS_NORMAL = 3.0f;
-    constexpr float WIRE_THICKNESS_SELECTED = 5.0f;
+    constexpr float WIRE_THICKNESS_NORMAL = 2.5f;
+    constexpr float WIRE_THICKNESS_SELECTED = 4.0f;
     constexpr float WIRE_THICKNESS_PREVIEW = 3.0f;
     constexpr float WIRE_HOVER_TOLERANCE = 8.0f;
 
     // Gate visual settings
-    constexpr float GATE_LABEL_FONT_SIZE = 16.0f;
-    constexpr float GATE_OUTLINE_THICKNESS = 2.0f;
-    constexpr float GATE_OUTLINE_THICKNESS_SELECTED = 4.0f;
+    constexpr float GATE_LABEL_FONT_SIZE = 15.0f;
+    constexpr float GATE_OUTLINE_THICKNESS = 1.5f;
+    constexpr float GATE_OUTLINE_THICKNESS_SELECTED = 3.0f;
 
     // Animation settings
     constexpr float HOVER_ANIMATION_SPEED = 0.1f;
@@ -56,50 +56,50 @@ namespace Config {
     // Colors
     namespace Colors {
         // UI colors
-        const Color BACKGROUND = {0x1f, 0x29, 0x37, 0xff};       // Dark, desaturated blue-gray
-        const Color PALETTE = {0x37, 0x41, 0x51, 0xff};          // Lighter gray for palette
-        const Color PALETTE_ITEM = {0x4b, 0x55, 0x63, 0xff};
-        const Color PALETTE_ITEM_SELECTED = {0x6b, 0x72, 0x80, 0xff};
-        const Color PALETTE_TEXT = WHITE;
-        const Color SELECTION_HIGHLIGHT = YELLOW;
-        const Color GRID_LINE = {0x80, 0x80, 0x80, 0x33};        // Light gray with low opacity
+        const Color BACKGROUND = {0x1A, 0x1A, 0x2E, 0xFF};
+        const Color PALETTE = {0x2C, 0x2C, 0x2E, 0xFF};
+        const Color PALETTE_ITEM = {0x36, 0x36, 0x3A, 0xFF};
+        const Color PALETTE_ITEM_SELECTED = {0x4A, 0x90, 0xE2, 0xFF};
+        const Color PALETTE_TEXT = {0xF0, 0xF0, 0xF0, 0xFF};
+        const Color SELECTION_HIGHLIGHT = {0xFF, 0xFF, 0x00, 0xFF};
+        const Color GRID_LINE = {0xCC, 0xCC, 0xCC, 0x33};        // Light gray with 0.2 opacity (0x33 is 51 in decimal, 51/255 is 0.2)
 
         // Wire colors
-        const Color WIRE_OFF = {0x80, 0x80, 0x80, 0xff};         // Medium gray
-        const Color WIRE_ON = {0x00, 0xbf, 0xff, 0xff};          // Bright blue
-        const Color WIRE_SELECTED = YELLOW;
-        const Color WIRE_PREVIEW = {0xff, 0xd7, 0x00, 0xff};     // Gold
-        const Color WIRE_INVALID = {0xff, 0x45, 0x00, 0xff};     // Orange-red
+        const Color WIRE_OFF = {0x55, 0x55, 0x55, 0xFF};
+        const Color WIRE_ON = {0x00, 0xFF, 0xFF, 0xFF};          // Cyan
+        const Color WIRE_SELECTED = {0xFF, 0xD7, 0x00, 0xFF};    // Gold
+        const Color WIRE_PREVIEW = {0xFF, 0xD7, 0x00, 0xff};     // Gold - Kept from original, seems reasonable
+        const Color WIRE_INVALID = {0xFF, 0x63, 0x47, 0xff};     // Tomato Red (similar to original Orange-red)
 
         // Pin colors
-        const Color PIN_STATE_ON = {0x00, 0xbf, 0xff, 0xff};     // Bright blue
-        const Color PIN_STATE_OFF = {0x50, 0x50, 0x50, 0xff};    // Dark gray
-        const Color PIN_HOVER = {0x7f, 0xff, 0xd4, 0xff};        // Aquamarine
-        const Color PIN_VALID_CONNECTION = {0x32, 0xcd, 0x32, 0xff}; // Lime green
-        const Color PIN_INVALID_CONNECTION = {0xff, 0x45, 0x00, 0xff}; // Orange-red
-        const Color PIN_TEXT = WHITE;
+        const Color PIN_STATE_ON = {0x00, 0xFF, 0xFF, 0xFF};     // Cyan (same as WIRE_ON)
+        const Color PIN_STATE_OFF = {0x65, 0x65, 0x65, 0xFF};    // Slightly lighter gray than WIRE_OFF
+        const Color PIN_HOVER = {0xAD, 0xD8, 0xE6, 0xAA};        // Light Blue with alpha (0xAA is 170, 170/255 is approx 0.66)
+        const Color PIN_VALID_CONNECTION = {0x32, 0xCD, 0x32, 0xFF}; // Lime green
+        const Color PIN_INVALID_CONNECTION = {0xFF, 0x63, 0x47, 0xFF}; // Tomato Red
+        const Color PIN_TEXT = {0xF0, 0xF0, 0xF0, 0xFF};
 
         // Gate colors
-        const Color GATE_FILL = {0x36, 0x45, 0x56, 0xff};        // Slate blue-gray
-        const Color GATE_OUTLINE = {0x20, 0x20, 0x20, 0xff};     // Very dark gray
-        const Color GATE_TEXT = WHITE;
+        const Color GATE_FILL = {0x36, 0x45, 0x56, 0xff};        // Slate blue-gray - Default, can be overridden by specific gates
+        const Color GATE_OUTLINE = {0x45, 0x45, 0x45, 0xFF};
+        const Color GATE_TEXT = {0xF0, 0xF0, 0xF0, 0xFF};
 
         // Input/Output colors
-        const Color INPUT_OFF = {0x50, 0x50, 0x50, 0xff};        // Dark gray
-        const Color INPUT_ON = {0x32, 0xcd, 0x32, 0xff};         // Lime green
-        const Color OUTPUT_OFF = {0x50, 0x50, 0x50, 0xff};       // Dark gray
-        const Color OUTPUT_ON = {0xff, 0x45, 0x00, 0xff};        // Orange-red
-        const Color IO_TEXT = WHITE;
-        const Color IO_OUTLINE = {0x20, 0x20, 0x20, 0xff};       // Very dark gray
+        const Color INPUT_OFF = {0x42, 0x42, 0x42, 0xFF};
+        const Color INPUT_ON = {0x00, 0xE6, 0x76, 0xFF};
+        const Color OUTPUT_OFF = {0x42, 0x42, 0x42, 0xFF};
+        const Color OUTPUT_ON = {0x00, 0xB0, 0xFF, 0xFF};
+        const Color IO_TEXT = {0xF0, 0xF0, 0xF0, 0xFF};
+        const Color IO_OUTLINE = {0x45, 0x45, 0x45, 0xff};       // Match GATE_OUTLINE
 
         // Gate-specific colors
-        const Color AND_GATE = {0x41, 0x69, 0xe1, 0xff};         // Royal blue
-        const Color OR_GATE = {0x9a, 0xcd, 0x32, 0xff};          // Yellow-green
-        const Color XOR_GATE = {0xff, 0x8c, 0x00, 0xff};         // Dark orange
-        const Color NOT_GATE = {0xdc, 0x14, 0x3c, 0xff};         // Crimson
-        const Color NAND_GATE = {0x48, 0x3d, 0x8b, 0xff};        // Dark slate blue
-        const Color NOR_GATE = {0x2e, 0x8b, 0x57, 0xff};         // Sea green
-        const Color XNOR_GATE = {0xda, 0x70, 0xd6, 0xff};        // Orchid
+        const Color AND_GATE = {0x3D, 0x84, 0xB8, 0xFF};
+        const Color OR_GATE = {0x4C, 0xAF, 0x50, 0xFF};
+        const Color XOR_GATE = {0x9C, 0x27, 0xB0, 0xFF};
+        const Color NOT_GATE = {0xF4, 0x43, 0x36, 0xFF};
+        const Color NAND_GATE = {0x5A, 0x9A, 0xCC, 0xFF};
+        const Color NOR_GATE = {0x6B, 0xCF, 0x71, 0xFF};
+        const Color XNOR_GATE = {0xB5, 0x50, 0xC8, 0xFF};
     }
 }
 

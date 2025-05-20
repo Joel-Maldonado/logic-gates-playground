@@ -23,12 +23,13 @@ public:
 private:
     GateType determineGateType(const LogicGate* gate) const;
     void renderGateBody(const LogicGate* gate, GateType type) const;
-    void renderGatePins(const LogicGate* gate) const;
+    void renderGatePins(const LogicGate* gate, GateType gateType) const;
     void renderAndGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const;
     void renderOrGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const;
     void renderXorGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const;
     void renderNotGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const;
-    void renderPin(const GatePin* pin, bool showLabel) const;
+    void renderPin(const GatePin* pin, bool showLabel, GateType gateType) const;
+    void drawInversionBubble(Vector2 position, float radius, Color fillColor, Color outlineColor, float thickness) const;
 };
 
 #endif // GATE_RENDERER_H
