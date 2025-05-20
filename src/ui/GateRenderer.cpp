@@ -199,9 +199,9 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
 
             // Calculate positioning based on the D-shape's actual visual center
             // This logic must match renderAndGateSymbol's text centering
-            float radius_calc = bounds.height / 2.0f;
-            float flatPartWidth_calc = radius_calc; // Consistent with renderAndGateSymbol's new proportions
-            float visualCenterX_calc = bounds.x + (flatPartWidth_calc + radius_calc) / 2.0f;
+            // float radius_calc = bounds.height / 2.0f; // Not needed directly for centering with bounds.width
+            // float flatPartWidth_calc = radius_calc; 
+            float visualCenterX_calc = bounds.x + bounds.width / 2.0f; // Center in full bounds
 
             Vector2 textPos = {
                 visualCenterX_calc - textSize.x / 2.0f,
@@ -229,9 +229,9 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
 
             // Calculate positioning based on the OR shape's actual visual center
             // This logic must match renderOrGateSymbol's text centering
-            float actualWidth_calc = bounds.width * 0.8f; // Consistent with renderOrGateSymbol
-            float leftX_calc = bounds.x + (bounds.width - actualWidth_calc) / 2.0f; // Consistent
-            float visualCenterX_calc = leftX_calc + actualWidth_calc * 0.5f; // Centering at 50%
+            // float actualWidth_calc = bounds.width * 0.8f; 
+            // float leftX_calc = bounds.x + (bounds.width - actualWidth_calc) / 2.0f; 
+            float visualCenterX_calc = bounds.x + bounds.width / 2.0f; // Center in full bounds
 
             Vector2 textPos = {
                 visualCenterX_calc - textSize.x / 2.0f,
@@ -261,9 +261,9 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
 
             // Calculate positioning based on the XOR shape's actual visual center
             // This logic must match renderXorGateSymbol's text centering
-            float actualWidth_calc = bounds.width * 0.8f; // Consistent with renderXorGateSymbol
-            float leftX_calc = bounds.x + (bounds.width - actualWidth_calc) / 2.0f; // Consistent
-            float visualCenterX_calc = leftX_calc + actualWidth_calc * 0.5f; // Centering at 50%
+            // float actualWidth_calc = bounds.width * 0.8f;
+            // float leftX_calc = bounds.x + (bounds.width - actualWidth_calc) / 2.0f;
+            float visualCenterX_calc = bounds.x + bounds.width / 2.0f; // Center in full bounds
 
             Vector2 textPos = {
                 visualCenterX_calc - textSize.x / 2.0f,
@@ -360,9 +360,10 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
     // Create a D-shaped AND gate with flat left side and semicircle on right
     Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
     float radius = bounds.height / 2.0f;
-    // Adjust flatPartWidth to make the gate more compact.
-    // For example, flatPartWidth = radius makes the total width = 2 * radius = height.
-    float flatPartWidth = radius; 
+    // Ensure the D-shape uses the full bounds.width.
+    float flatPartWidth = bounds.width - radius;
+    // Ensure flatPartWidth is not negative if bounds.width is too small
+    if (flatPartWidth < 0) flatPartWidth = 0; 
     int segments = 20; // Number of segments to approximate the semicircle
 
     // Draw the rectangle part (left side)
@@ -418,9 +419,9 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
     // Draw gate label centered
     const char* label = "AND";
     Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-    // The effective width of the D-shape is flatPartWidth + radius.
-    // The center X of the D-shape is bounds.x + (flatPartWidth + radius) / 2.0f
-    float visualCenterX = bounds.x + (flatPartWidth + radius) / 2.0f;
+    // The effective width of the D-shape is flatPartWidth + radius, which should now be bounds.width.
+    // Center the text within bounds.width.
+    float visualCenterX = bounds.x + bounds.width / 2.0f;
     Vector2 textPos = {
         visualCenterX - textSize.x / 2.0f,
         bounds.y + (bounds.height - textSize.y) / 2.0f
@@ -432,10 +433,12 @@ void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color o
     // Create shield-like OR gate with curved input side and point on right
     Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
 
-    // Adjust width for better proportions
-    float actualWidth = bounds.width * 0.8f;
-    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
-    float rightX = leftX + actualWidth;
+    // Use full bounds.width for the OR gate shape
+    // float actualWidth = bounds.width * 0.8f; // Remove this scaling
+    // float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f; // This becomes bounds.x
+    float leftX = bounds.x;
+    // float rightX = leftX + actualWidth; // This becomes bounds.x + bounds.width
+    float rightX = bounds.x + bounds.width;
     Vector2 rightPoint = {rightX, center.y};
 
     // Parameters for the curved left side
@@ -473,8 +476,8 @@ void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color o
     // Draw gate label centered in the visible area
     const char* label = "OR";
     Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-    // Center the text within the 'actualWidth' of the gate shape
-    float textCenterX = leftX + actualWidth / 2.0f;
+    // Center the text within the full bounds.width of the gate shape
+    float textCenterX = bounds.x + bounds.width / 2.0f;
     Vector2 textPos = {
         textCenterX - textSize.x / 2.0f,
         bounds.y + (bounds.height - textSize.y) / 2.0f
@@ -488,13 +491,16 @@ void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color o
 
 void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
     // First draw the OR gate as the base
-    renderOrGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+    renderOrGateSymbol(bounds, fillColor, outlineColor, outlineThickness); // OR symbol now uses full bounds
 
     // Add the second curve that distinguishes XOR from OR
-    float actualWidth = bounds.width * 0.8f;
-    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
-    float curveOffset = bounds.height * 0.11f;
-    float curveDepth = bounds.height * 0.15f;
+    // Ensure this curve also scales with the full bounds.width
+    // float actualWidth = bounds.width * 0.8f; // Remove this scaling for consistency if curve is relative to gate edge
+    // float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f; // This becomes bounds.x
+    float leftX = bounds.x; 
+    float curveOffset = bounds.height * 0.11f; // Keep curve offset relative to height or a fixed value
+    float curveDepth = bounds.height * 0.15f;  // Keep curve depth relative to height or a fixed value
+
 
     // Draw the second curved line with the same parabolic shape
     const int segments = 20;
@@ -517,8 +523,8 @@ void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color 
     // Update the label for XOR
     const char* label = "XOR";
     Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-    // Center the text within the 'actualWidth' of the gate shape, similar to OR
-    float textCenterX = leftX + actualWidth / 2.0f;
+    // Center the text within the full bounds.width of the gate shape, similar to OR
+    float textCenterX = bounds.x + bounds.width / 2.0f; // Centered in full bounds
     Vector2 textPos = {
         textCenterX - textSize.x / 2.0f,
         bounds.y + (bounds.height - textSize.y) / 2.0f
@@ -526,10 +532,10 @@ void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color 
 
     // Clear existing text (e.g. if OR symbol was drawn first) and draw XOR text
     // The renderOrGateSymbol call already draws "OR". We need to clear that "OR" text first.
-    // Position of "OR" text from renderOrGateSymbol:
+    // Position of "OR" text from renderOrGateSymbol (now also centered in full bounds):
     const char* orLabel = "OR"; // Label drawn by renderOrGateSymbol
     Vector2 orTextSize = MeasureTextEx(GetFontDefault(), orLabel, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-    float orTextCenterX = leftX + actualWidth / 2.0f; // OR text is also centered now
+    float orTextCenterX = bounds.x + bounds.width / 2.0f; 
     Vector2 orTextPos = {
         orTextCenterX - orTextSize.x / 2.0f,
         bounds.y + (bounds.height - orTextSize.y) / 2.0f
@@ -542,23 +548,14 @@ void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color 
 }
 
 void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
-    // Create triangular NOT gate
+    // Create triangular NOT gate that fills the bounds
     Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
 
-    // Calculate dimensions for a more equilateral triangle
-    // For an equilateral triangle, the width should be approximately 1.155 times the height
-    float triangleHeight = bounds.height;
-    float idealWidth = triangleHeight * 0.866f; // width = height * sqrt(3)/2 for equilateral
-
-    // Use 70% of the available width to make it more compact
-    float actualWidth = fminf(bounds.width * 0.7f, idealWidth);
-    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
-
-    // Define triangle points
+    // Triangle points defined by bounds directly
     Vector2 points[3] = {
-        {leftX, bounds.y},                // Top-left
-        {leftX, bounds.y + bounds.height}, // Bottom-left
-        {leftX + actualWidth, center.y}    // Right-middle
+        {bounds.x, bounds.y},                                     // Top-left
+        {bounds.x, bounds.y + bounds.height},                     // Bottom-left
+        {bounds.x + bounds.width, bounds.y + bounds.height / 2.0f} // Right-middle
     };
 
     // Draw filled triangle and outline

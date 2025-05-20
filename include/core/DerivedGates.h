@@ -5,49 +5,49 @@
 
 class AndGate : public LogicGate {
 public:
-    AndGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
+    AndGate(std::string gateId, Vector2 pos, float w = 105.0f, float h = 70.0f);
     void evaluate() override;
     void draw() override;
 };
 
 class OrGate : public LogicGate {
 public:
-    OrGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
+    OrGate(std::string gateId, Vector2 pos, float w = 84.0f, float h = 70.0f);
     void evaluate() override;
     void draw() override;
 };
 
 class XorGate : public LogicGate {
 public:
-    XorGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
+    XorGate(std::string gateId, Vector2 pos, float w = 84.0f, float h = 70.0f);
     void evaluate() override;
     void draw() override;
 };
 
 class NotGate : public LogicGate {
 public:
-    NotGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
+    NotGate(std::string gateId, Vector2 pos, float w = 70.0f, float h = 70.0f);
     void evaluate() override;
     void draw() override;
 };
 
 class NandGate : public LogicGate {
 public:
-    NandGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
+    NandGate(std::string gateId, Vector2 pos, float w = 105.0f, float h = 70.0f);
     void evaluate() override;
     void draw() override;
 };
 
 class NorGate : public LogicGate {
 public:
-    NorGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
+    NorGate(std::string gateId, Vector2 pos, float w = 84.0f, float h = 70.0f);
     void evaluate() override;
     void draw() override;
 };
 
 class XnorGate : public LogicGate {
 public:
-    XnorGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
+    XnorGate(std::string gateId, Vector2 pos, float w = 84.0f, float h = 70.0f);
     void evaluate() override;
     void draw() override;
 };

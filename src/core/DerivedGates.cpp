@@ -27,10 +27,10 @@ void DrawPlaceholderGate(LogicGate* gate, const char* label) {
 }
 
 AndGate::AndGate(std::string gateId, Vector2 pos, float w, float h)
-    : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 3.0f});
-    initializeInputPin(1, {0, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    : LogicGate(gateId, pos, 105.0f, 70.0f) {
+    initializeInputPin(0, {0, 70.0f / 3.0f});
+    initializeInputPin(1, {0, 2.0f * 70.0f / 3.0f});
+    initializeOutputPin(0, {105.0f, 70.0f / 2.0f});
 }
 
 void AndGate::evaluate() {
@@ -52,10 +52,10 @@ void AndGate::draw() {
 }
 
 OrGate::OrGate(std::string gateId, Vector2 pos, float w, float h)
-    : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 3.0f});
-    initializeInputPin(1, {0, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    : LogicGate(gateId, pos, 84.0f, 70.0f) {
+    initializeInputPin(0, {0, 70.0f / 3.0f});
+    initializeInputPin(1, {0, 2.0f * 70.0f / 3.0f});
+    initializeOutputPin(0, {84.0f, 70.0f / 2.0f});
 }
 
 void OrGate::evaluate() {
@@ -77,10 +77,10 @@ void OrGate::draw() {
 }
 
 XorGate::XorGate(std::string gateId, Vector2 pos, float w, float h)
-    : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 3.0f});
-    initializeInputPin(1, {0, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    : LogicGate(gateId, pos, 84.0f, 70.0f) {
+    initializeInputPin(0, {0, 70.0f / 3.0f});
+    initializeInputPin(1, {0, 2.0f * 70.0f / 3.0f});
+    initializeOutputPin(0, {84.0f, 70.0f / 2.0f});
 }
 
 void XorGate::evaluate() {
@@ -97,9 +97,9 @@ void XorGate::draw() {
 }
 
 NotGate::NotGate(std::string gateId, Vector2 pos, float w, float h)
-    : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 2.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    : LogicGate(gateId, pos, 70.0f, 70.0f) {
+    initializeInputPin(0, {0, 70.0f / 2.0f});
+    initializeOutputPin(0, {70.0f, 70.0f / 2.0f});
 }
 
 void NotGate::evaluate() {
@@ -114,10 +114,10 @@ void NotGate::draw() {
 }
 
 NandGate::NandGate(std::string gateId, Vector2 pos, float w, float h)
-    : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 3.0f});
-    initializeInputPin(1, {0, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    : LogicGate(gateId, pos, 105.0f, 70.0f) {
+    initializeInputPin(0, {0, 70.0f / 3.0f});
+    initializeInputPin(1, {0, 2.0f * 70.0f / 3.0f});
+    initializeOutputPin(0, {105.0f, 70.0f / 2.0f});
 }
 
 void NandGate::evaluate() {
@@ -139,10 +139,10 @@ void NandGate::draw() {
 }
 
 NorGate::NorGate(std::string gateId, Vector2 pos, float w, float h)
-    : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 3.0f});
-    initializeInputPin(1, {0, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    : LogicGate(gateId, pos, 84.0f, 70.0f) {
+    initializeInputPin(0, {0, 70.0f / 3.0f});
+    initializeInputPin(1, {0, 2.0f * 70.0f / 3.0f});
+    initializeOutputPin(0, {84.0f, 70.0f / 2.0f});
 }
 
 void NorGate::evaluate() {
@@ -164,10 +164,10 @@ void NorGate::draw() {
 }
 
 XnorGate::XnorGate(std::string gateId, Vector2 pos, float w, float h)
-    : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 3.0f});
-    initializeInputPin(1, {0, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    : LogicGate(gateId, pos, 84.0f, 70.0f) {
+    initializeInputPin(0, {0, 70.0f / 3.0f});
+    initializeInputPin(1, {0, 2.0f * 70.0f / 3.0f});
+    initializeOutputPin(0, {84.0f, 70.0f / 2.0f});
 }
 
 void XnorGate::evaluate() {
