@@ -288,7 +288,7 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
     }
 }
 
-void GateRenderer::renderGatePins(const LogicGate* gate) const {
+void GateRenderer::renderGatePins(const LogicGate* gate, GateType gateType) const {
     if (!gate) {
         return;
     }
@@ -325,7 +325,7 @@ void GateRenderer::renderPin(const GatePin* pin, bool showLabel, GateType gateTy
          gateType == GateType::NOR || gateType == GateType::XNOR)) {
         // Draw inversion bubble for output pins of inverted gates
         // Outline color for bubble should be GATE_OUTLINE, fill with BACKGROUND for "hollow" look
-        drawInversionBubble(pos, bubbleRadius, Config::Colors::BACKGROUND, Config::Colors::GATE_OUTLINE, Config::GATE_OUTLINE_THICKNESS);
+        drawInversionBubble(pos, bubbleRadius, Config::Colors::BACKGROUND, Config::Colors::GATE_OUTLINE);
     } else {
         // Draw standard pin
         Color pinColor = pin->getState() ? Config::Colors::PIN_STATE_ON : Config::Colors::PIN_STATE_OFF;
@@ -572,7 +572,7 @@ void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color 
     // Inversion bubble will be drawn by renderGatePins for the output pin
 }
 
-void GateRenderer::drawInversionBubble(Vector2 position, float radius, Color fillColor, Color outlineColor, float thickness) const {
+void GateRenderer::drawInversionBubble(Vector2 position, float radius, Color fillColor, Color outlineColor) const {
     DrawCircleV(position, radius, fillColor);
     // DrawCircleLinesV(position, radius, outlineColor); // DrawCircleLinesV takes Vector2 for position
     DrawCircleLines(static_cast<int>(position.x), static_cast<int>(position.y), radius, outlineColor); // Original

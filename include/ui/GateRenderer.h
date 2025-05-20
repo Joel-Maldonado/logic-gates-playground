@@ -29,7 +29,7 @@ private:
     void renderXorGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const;
     void renderNotGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const;
     void renderPin(const GatePin* pin, bool showLabel, GateType gateType) const;
-    void drawInversionBubble(Vector2 position, float radius, Color fillColor, Color outlineColor, float thickness) const;
+    void drawInversionBubble(Vector2 position, float radius, Color fillColor, Color outlineColor) const;
 };
 
 #endif // GATE_RENDERER_H
