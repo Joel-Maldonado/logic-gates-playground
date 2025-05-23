@@ -21,13 +21,11 @@ UIManager::UIManager(std::shared_ptr<CircuitSimulator> sim)
       clickedInputSource(nullptr),
       dragStartPosition({0, 0}) {
 
-    // Initialize camera
     camera.target = { (float)Config::SCREEN_WIDTH / 2, (float)Config::SCREEN_HEIGHT / 2 };
     camera.offset = { (float)Config::SCREEN_WIDTH / 2, (float)Config::SCREEN_HEIGHT / 2 };
     camera.rotation = 0.0f;
     camera.zoom = 1.0f;
 
-    // Initialize canvas bounds
     canvasBounds = {
         Config::PALETTE_WIDTH,
         0,
@@ -35,7 +33,6 @@ UIManager::UIManager(std::shared_ptr<CircuitSimulator> sim)
         (float)Config::SCREEN_HEIGHT
     };
 
-    // Initialize managers and renderers
     paletteManager = std::make_unique<PaletteManager>(simulator);
     gateRenderer = std::make_unique<GateRenderer>();
     wireRenderer = std::make_unique<WireRenderer>();
@@ -49,25 +46,19 @@ void UIManager::render() {
     BeginDrawing();
     ClearBackground(Config::Colors::BACKGROUND);
 
-    // Update camera position with inertia if needed
     updateCamera();
 
-    // Draw canvas content
     BeginMode2D(camera);
 
-    // Draw grid background
     if (Config::GRID_ENABLED) {
         renderGrid();
     }
 
-    // Draw wires
     wireRenderer->renderWires(simulator->getWires());
 
-    // Draw wire preview if drawing a wire
     if (isDrawingWire && wireStartPin) {
         Vector2 worldMousePos = GetScreenToWorld2D(GetMousePosition(), camera);
 
-        // Check if mouse is over an input pin to determine routing style
         bool isOverInputPin = false;
         for (const auto& gate : simulator->getGates()) {
             for (size_t i = 0; i < gate->getInputPinCount(); i++) {
@@ -80,16 +71,14 @@ void UIManager::render() {
             if (isOverInputPin) break;
         }
 
-        // Render the wire preview with appropriate routing
         wireRenderer->renderWirePreview(
             wireStartPin->getAbsolutePosition(),
             wirePreviewEndPos,
-            isOverInputPin,  // Pass whether we're over an input pin
+            isOverInputPin,
             Config::Colors::WIRE_PREVIEW,
             Config::WIRE_THICKNESS_PREVIEW
         );
 
-        // Highlight potential connection pins
         gateRenderer->renderWirePreview(
             wireStartPin,
             simulator->getGates(),
@@ -97,22 +86,18 @@ void UIManager::render() {
         );
     }
 
-    // Draw gates
     gateRenderer->renderGates(simulator->getGates(), camera);
 
     EndMode2D();
 
-    // Draw palette
     paletteManager->render(camera);
 
-    // Draw FPS
     DrawFPS(GetScreenWidth() - 90, 10);
 
     EndDrawing();
 }
 
 void UIManager::processInput() {
-    // This is handled by the InputHandler class
 }
 
 Camera2D& UIManager::getCamera() {
@@ -181,14 +166,7 @@ bool UIManager::completeWireDrawing(GatePin* pin) {
         return false;
     }
 
-    // Create the wire
     Wire* wire = simulator->createWire(wireStartPin, pin);
-
-    if (wire) {
-        // The wire will automatically calculate its path in the constructor
-        // using the new routing algorithm that ensures horizontal approach to input pins
-        // No need to manually set control points here
-    }
 
     isDrawingWire = false;
     wireStartPin = nullptr;
@@ -209,7 +187,7 @@ void UIManager::startDraggingComponent(LogicGate* component, Vector2 mousePos) {
     selectComponent(component);
     isDraggingComponent = true;
     dragStartOffset = Vector2Subtract(mousePos, component->getPosition());
-    dragStartPosition = mousePos; // Store the starting position for drag detection
+    dragStartPosition = mousePos;
 }
 
 void UIManager::updateDragging(Vector2 mousePos) {
@@ -217,31 +195,17 @@ void UIManager::updateDragging(Vector2 mousePos) {
         return;
     }
 
-    // Calculate the position based on mouse position and drag offset
     Vector2 position = Vector2Subtract(mousePos, dragStartOffset);
-
-    // Check for wire alignment snapping
     Vector2 alignedPosition = checkWireAlignmentSnapping(selectedComponent, position);
-
-    // Update the component's position with the aligned position
     selectedComponent->setPosition(alignedPosition);
-
-    // Update all wire paths connected to this component
     updateWirePathsForComponent(selectedComponent);
 }
 
 void UIManager::stopDragging() {
     if (isDraggingComponent && selectedComponent) {
-        // Get the current position
         Vector2 currentPos = selectedComponent->getPosition();
-
-        // Check for wire alignment snapping
         Vector2 alignedPos = checkWireAlignmentSnapping(selectedComponent, currentPos);
-
-        // Set the aligned position
         selectedComponent->setPosition(alignedPos);
-
-        // Update wire paths after alignment
         updateWirePathsForComponent(selectedComponent);
     }
 
@@ -253,7 +217,6 @@ bool UIManager::startDraggingWirePoint(Vector2 mousePos) {
         return false;
     }
 
-    // Try to start dragging a control point on the selected wire
     if (selectedWire->startDraggingPoint(mousePos)) {
         isDraggingWirePoint = true;
         return true;
@@ -267,7 +230,6 @@ void UIManager::updateWirePointDragging(Vector2 mousePos) {
         return;
     }
 
-    // Update the dragged control point position
     selectedWire->updateDraggedPoint(mousePos);
 }
 
@@ -313,34 +275,27 @@ void UIManager::setClickedInputSource(InputSource* inputSource) {
 }
 
 bool UIManager::wasDragged(Vector2 currentMousePos) const {
-    // Calculate the distance between the start position and current position
     float dx = currentMousePos.x - dragStartPosition.x;
     float dy = currentMousePos.y - dragStartPosition.y;
     float distance = sqrt(dx*dx + dy*dy);
-
-    // If the distance is greater than a threshold, consider it a drag
     return distance > Config::DRAG_THRESHOLD;
 }
 
 void UIManager::renderGrid() {
-    // Calculate the visible area in world coordinates
     Vector2 screenTopLeft = GetScreenToWorld2D({0, 0}, camera);
     Vector2 screenBottomRight = GetScreenToWorld2D({(float)GetScreenWidth(), (float)GetScreenHeight()}, camera);
 
-    // Calculate the starting and ending grid points
     int startX = floor(screenTopLeft.x / Config::GRID_SIZE) * Config::GRID_SIZE;
     int startY = floor(screenTopLeft.y / Config::GRID_SIZE) * Config::GRID_SIZE;
     int endX = ceil(screenBottomRight.x / Config::GRID_SIZE) * Config::GRID_SIZE;
     int endY = ceil(screenBottomRight.y / Config::GRID_SIZE) * Config::GRID_SIZE;
 
-    // Draw subtle grid lines for major divisions
     float majorGridSize = Config::GRID_SIZE * 4.0f;
     int majorStartX = floor(screenTopLeft.x / majorGridSize) * majorGridSize;
     int majorStartY = floor(screenTopLeft.y / majorGridSize) * majorGridSize;
     int majorEndX = ceil(screenBottomRight.x / majorGridSize) * majorGridSize;
     int majorEndY = ceil(screenBottomRight.y / majorGridSize) * majorGridSize;
 
-    // Draw major grid lines (very subtle)
     for (float x = majorStartX; x <= majorEndX; x += majorGridSize) {
         DrawLineV({x, screenTopLeft.y}, {x, screenBottomRight.y}, Config::Colors::GRID_LINE);
     }
@@ -348,13 +303,11 @@ void UIManager::renderGrid() {
         DrawLineV({screenTopLeft.x, y}, {screenBottomRight.x, y}, Config::Colors::GRID_LINE);
     }
 
-    // Draw grid dots at intersections
-    float dotSize = 1.5f / camera.zoom; // Scale dots with zoom
-    dotSize = std::max(0.5f, std::min(2.0f, dotSize)); // Clamp dot size
+    float dotSize = 1.5f / camera.zoom;
+    dotSize = std::max(0.5f, std::min(2.0f, dotSize));
 
     for (float x = startX; x <= endX; x += Config::GRID_SIZE) {
         for (float y = startY; y <= endY; y += Config::GRID_SIZE) {
-            // Make dots more visible at major intersections
             bool isMajorIntersection = (fmod(x, majorGridSize) == 0.0f && fmod(y, majorGridSize) == 0.0f);
             Color dotColor = isMajorIntersection ? Config::Colors::GRID_LINE : Config::Colors::GRID_DOT;
             float currentDotSize = isMajorIntersection ? dotSize * 1.5f : dotSize;
@@ -375,21 +328,17 @@ void UIManager::startPanning(Vector2 mousePos) {
 
 void UIManager::updatePanning(Vector2 mousePos) {
     if (isPanning) {
-        // Calculate the movement delta in screen space
         Vector2 delta = {
             mousePos.x - lastMousePosition.x,
             mousePos.y - lastMousePosition.y
         };
 
-        // Update camera target (move in opposite direction of mouse movement)
         camera.target.x -= delta.x / camera.zoom;
         camera.target.y -= delta.y / camera.zoom;
 
-        // Update velocity for inertia
         panVelocity.x = delta.x / camera.zoom;
         panVelocity.y = delta.y / camera.zoom;
 
-        // Update last mouse position
         lastMousePosition = mousePos;
     }
 }
@@ -400,15 +349,12 @@ void UIManager::stopPanning() {
 
 void UIManager::updateCamera() {
     if (!isPanning && (panVelocity.x != 0 || panVelocity.y != 0)) {
-        // Apply inertia to slow down the panning
         camera.target.x -= panVelocity.x;
         camera.target.y -= panVelocity.y;
 
-        // Reduce velocity
         panVelocity.x *= panInertia;
         panVelocity.y *= panInertia;
 
-        // Stop when velocity is very small
         if (fabs(panVelocity.x) < 0.01f) panVelocity.x = 0;
         if (fabs(panVelocity.y) < 0.01f) panVelocity.y = 0;
     }
@@ -423,10 +369,8 @@ void UIManager::updateWirePathsForComponent(LogicGate* component) {
         return;
     }
 
-    // Get all wires associated with this component
     const std::vector<Wire*>& associatedWires = component->getAssociatedWires();
 
-    // Recalculate the path for each wire
     for (Wire* wire : associatedWires) {
         if (wire) {
             wire->recalculatePath();
@@ -436,10 +380,8 @@ void UIManager::updateWirePathsForComponent(LogicGate* component) {
 
 
 void UIManager::handleWindowResize(int newWidth, int newHeight) {
-    // Update camera offset to match the new center of the screen
     camera.offset = { (float)newWidth / 2, (float)newHeight / 2 };
 
-    // Update canvas bounds to match the new window size
     canvasBounds = {
         Config::PALETTE_WIDTH,
         0,
@@ -447,7 +389,6 @@ void UIManager::handleWindowResize(int newWidth, int newHeight) {
         (float)newHeight
     };
 
-    // Notify the palette manager of the window resize
     paletteManager->handleWindowResize();
 }
 
@@ -456,40 +397,29 @@ Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position)
         return position;
     }
 
-    // Define the snapping threshold (how close pins need to be to snap)
     const float SNAP_THRESHOLD = 15.0f;
-
-    // Get all wires associated with this gate
     const std::vector<Wire*>& associatedWires = gate->getAssociatedWires();
 
-    // If no wires are connected, return the original position
     if (associatedWires.empty()) {
         return position;
     }
 
-    // Create a copy of the position that we'll modify
     Vector2 adjustedPosition = position;
     bool hasSnapped = false;
 
-    // For each wire, check if we should snap to align with the connected gate's pins
     for (Wire* wire : associatedWires) {
         if (!wire || hasSnapped) continue;
 
-        // Get the pins at both ends of the wire
         GatePin* sourcePin = wire->getSourcePin();
         GatePin* destPin = wire->getDestPin();
 
-        // Skip if either pin is null
         if (!sourcePin || !destPin) continue;
 
-        // Get the parent gates of both pins
         LogicGate* sourceGate = sourcePin->getParentGate();
         LogicGate* destGate = destPin->getParentGate();
 
-        // Skip if either gate is null
         if (!sourceGate || !destGate) continue;
 
-        // Determine which pins belong to which gate
         GatePin* thisGatePin;
         GatePin* otherGatePin;
 
@@ -501,29 +431,20 @@ Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position)
             otherGatePin = sourcePin;
         }
 
-        // Calculate what the pin position would be at the current gate position
-        // We need to account for the pin's relative offset from the gate's position
         Vector2 currentPinOffset = Vector2Subtract(thisGatePin->getAbsolutePosition(), gate->getPosition());
         Vector2 projectedPinPos = Vector2Add(position, currentPinOffset);
-
-        // Get the absolute position of the other gate's pin
         Vector2 otherPinPos = otherGatePin->getAbsolutePosition();
 
-        // Check for horizontal alignment (y-axis)
         float yDiff = fabs(projectedPinPos.y - otherPinPos.y);
         if (yDiff < SNAP_THRESHOLD) {
-            // Calculate the adjustment needed to align the pins
             float yAdjustment = otherPinPos.y - projectedPinPos.y;
             adjustedPosition.y = position.y + yAdjustment;
             hasSnapped = true;
         }
 
-        // Check for vertical alignment (x-axis)
-        // Only check if we haven't already snapped horizontally
         if (!hasSnapped) {
             float xDiff = fabs(projectedPinPos.x - otherPinPos.x);
             if (xDiff < SNAP_THRESHOLD) {
-                // Calculate the adjustment needed to align the pins
                 float xAdjustment = otherPinPos.x - projectedPinPos.x;
                 adjustedPosition.x = position.x + xAdjustment;
                 hasSnapped = true;

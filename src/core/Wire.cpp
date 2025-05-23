@@ -82,14 +82,13 @@ void Wire::draw() const {
             thickness = Config::WIRE_THICKNESS_SELECTED;
         }
 
-        // Draw wire with enhanced visual effects
         drawEnhancedWirePath(controlPoints_, wireColorToUse, thickness);
 
-        // Draw animated signal for active wires (no glow)
+        // Draw animated signal dot for active wires
         if (state_ && !isSelected) {
-            float signalProgress = fmod(GetTime() * 2.0f, 1.0f); // 2 signals per second
-            // Draw simple animated signal without glow
+            float signalProgress = fmod(GetTime() * 2.0f, 1.0f);  // 2-second cycle
             if (!controlPoints_.empty()) {
+                // Calculate total wire length and individual segment lengths
                 float totalLength = 0.0f;
                 std::vector<float> segmentLengths;
                 for (size_t i = 0; i < controlPoints_.size() - 1; i++) {
@@ -99,11 +98,13 @@ void Wire::draw() const {
                 }
 
                 if (totalLength > 0.0f) {
+                    // Find position along wire path based on animation progress
                     float targetDistance = signalProgress * totalLength;
                     float currentDistance = 0.0f;
 
                     for (size_t i = 0; i < segmentLengths.size(); i++) {
                         if (currentDistance + segmentLengths[i] >= targetDistance) {
+                            // Interpolate position within current segment
                             float t = (targetDistance - currentDistance) / segmentLengths[i];
                             Vector2 position = Vector2Lerp(controlPoints_[i], controlPoints_[i + 1], t);
                             DrawCircleV(position, 3.0f, Config::Colors::WIRE_ON);
@@ -115,7 +116,6 @@ void Wire::draw() const {
             }
         }
 
-        // Draw control points for selected wires (no glow)
         if (isSelected) {
             for (const auto& point : controlPoints_) {
                 DrawCircleV(point, 4.0f, Config::Colors::WIRE_SELECTED);
@@ -130,12 +130,10 @@ void Wire::drawWirePath(const std::vector<Vector2>& points, Color color, float t
         return;
     }
 
-    // Draw line segments between control points
     for (size_t i = 0; i < points.size() - 1; i++) {
         DrawLineEx(points[i], points[i + 1], thickness, color);
     }
 
-    // Draw a small for the direction of signal direction if the wire is long enough
     if (points.size() >= 2) {
         Vector2 lastSegmentStart = points[points.size() - 2];
         Vector2 lastSegmentEnd = points[points.size() - 1];
@@ -143,25 +141,19 @@ void Wire::drawWirePath(const std::vector<Vector2>& points, Color color, float t
         float distance = Vector2Distance(lastSegmentStart, lastSegmentEnd);
 
         if (distance > 30.0f) {
-            // Calculate a point 80% of the way from start to end of the last segment
             float t = 0.8f;
             Vector2 arrowPos = {
                 lastSegmentStart.x + t * (lastSegmentEnd.x - lastSegmentStart.x),
                 lastSegmentStart.y + t * (lastSegmentEnd.y - lastSegmentStart.y)
             };
 
-            // Calculate direction vector
             Vector2 dir = Vector2Normalize(Vector2Subtract(lastSegmentEnd, lastSegmentStart));
-
-            // Perpendicular direction
             Vector2 perp = { -dir.y, dir.x };
 
-            // Calculate arrow points
             Vector2 arrowTip = Vector2Add(arrowPos, Vector2Scale(dir, 8.0f));
             Vector2 arrowLeft = Vector2Subtract(arrowPos, Vector2Scale(perp, 4.0f));
             Vector2 arrowRight = Vector2Add(arrowPos, Vector2Scale(perp, 4.0f));
 
-            // Draw arrow
             DrawTriangle(arrowTip, arrowLeft, arrowRight, color);
         }
     }
@@ -172,24 +164,21 @@ void Wire::drawEnhancedWirePath(const std::vector<Vector2>& points, Color color,
         return;
     }
 
-    // Draw line segments without glow effects
     for (size_t i = 0; i < points.size() - 1; i++) {
         DrawLineEx(points[i], points[i + 1], thickness, color);
     }
 
-    // Draw enhanced direction arrow
     if (points.size() >= 2) {
         Vector2 lastSegmentStart = points[points.size() - 2];
         Vector2 lastSegmentEnd = points[points.size() - 1];
         float distance = Vector2Distance(lastSegmentStart, lastSegmentEnd);
 
         if (distance > 30.0f) {
-            // Add subtle animation for active wires
             bool isActive = state_ && !isSelected;
             float t = 0.8f;
             if (isActive) {
                 float pulseValue = VisualEffects::getPulseValue(4.0f);
-                t = 0.75f + pulseValue * 0.1f; // Subtle movement
+                t = 0.75f + pulseValue * 0.1f;
             }
 
             Vector2 arrowPos = {
@@ -197,17 +186,14 @@ void Wire::drawEnhancedWirePath(const std::vector<Vector2>& points, Color color,
                 lastSegmentStart.y + t * (lastSegmentEnd.y - lastSegmentStart.y)
             };
 
-            // Calculate direction and perpendicular vectors
             Vector2 dir = Vector2Normalize(Vector2Subtract(lastSegmentEnd, lastSegmentStart));
             Vector2 perp = { -dir.y, dir.x };
 
-            // Create arrow triangle points
             float arrowSize = isActive ? 9.0f : 8.0f;
             Vector2 arrowTip = Vector2Add(arrowPos, Vector2Scale(dir, arrowSize));
             Vector2 arrowLeft = Vector2Subtract(arrowPos, Vector2Scale(perp, arrowSize * 0.5f));
             Vector2 arrowRight = Vector2Add(arrowPos, Vector2Scale(perp, arrowSize * 0.5f));
 
-            // Draw arrow without glow
             DrawTriangle(arrowTip, arrowLeft, arrowRight, color);
         }
     }
@@ -226,12 +212,10 @@ bool Wire::isMouseOver(Vector2 mousePos, float tolerance) const {
         return false;
     }
 
-    // Check each line segment in the wire path
     for (size_t i = 0; i < controlPoints_.size() - 1; i++) {
         Vector2 p1 = controlPoints_[i];
         Vector2 p2 = controlPoints_[i + 1];
 
-        // Check bounding box of this line segment first for quick rejection
         Rectangle segmentBounds;
         segmentBounds.x = fmin(p1.x, p2.x) - tolerance;
         segmentBounds.y = fmin(p1.y, p2.y) - tolerance;
@@ -239,7 +223,6 @@ bool Wire::isMouseOver(Vector2 mousePos, float tolerance) const {
         segmentBounds.height = fabsf(p1.y - p2.y) + 2 * tolerance;
 
         if (CheckCollisionPointRec(mousePos, segmentBounds)) {
-            // Check collision with the line segment
             if (CheckCollisionPointLine(mousePos, p1, p2, static_cast<int>(ceil(tolerance)))) {
                 return true;
             }
@@ -286,7 +269,6 @@ bool Wire::startDraggingPoint(Vector2 mousePos, float tolerance) {
         return false;
     }
 
-    // Check if mouse is over a control point (skip first and last points which  attached to pins)
     for (size_t i = 1; i < controlPoints_.size() - 1; i++) {
         if (Vector2Distance(mousePos, controlPoints_[i]) <= tolerance) {
             isDraggingPoint_ = true;
@@ -304,24 +286,15 @@ void Wire::updateDraggedPoint(Vector2 mousePos) {
         return;
     }
 
-    // Update the control point position
     controlPoints_[draggedPointIndex_] = mousePos;
 
-    // Adjust adjacent segments to maintain orthogonal routing
     if (draggedPointIndex_ > 0 && draggedPointIndex_ < static_cast<int>(controlPoints_.size()) - 1) {
         Vector2 prevPoint = controlPoints_[draggedPointIndex_ - 1];
-        // We don't need nextPoint for the calculation, just for updating
-
-        // Determine if the previous segment is horizontal or vertical
         bool isPrevHorizontal = fabs(prevPoint.y - mousePos.y) < 0.001f;
 
         if (isPrevHorizontal) {
-            // Previous segment is horizontal, so next segment must be vertical
-            // Keep the x-coordinate of the dragged point for the next point
             controlPoints_[draggedPointIndex_ + 1].x = mousePos.x;
         } else {
-            // Previous segment is vertical, so next segment must be horizontal
-            // Keep the y-coordinate of the dragged point for the next point
             controlPoints_[draggedPointIndex_ + 1].y = mousePos.y;
         }
     }

@@ -5,24 +5,20 @@
 #include <string>
 
 namespace Config {
-    // Window settings
     constexpr int SCREEN_WIDTH = 1280;
     constexpr int SCREEN_HEIGHT = 720;
     constexpr int TARGET_FPS = 60;
     constexpr const char* WINDOW_TITLE = "Logic Gates Playground";
 
-    // UI layout
     constexpr float PALETTE_WIDTH = 180.0f;
     constexpr float PALETTE_ITEM_HEIGHT = 60.0f;
     constexpr float CANVAS_PADDING = 10.0f;
 
-    // Grid settings
-    constexpr bool GRID_ENABLED = true;        // Controls whether the grid is visually displayed
+    constexpr bool GRID_ENABLED = true;
     constexpr float GRID_SIZE = 25.0f;
     constexpr float GRID_LINE_THICKNESS = 1.0f;
-    constexpr float GRID_OPACITY = 0.2f;  // 0.0 to 1.0
+    constexpr float GRID_OPACITY = 0.2f;
 
-    // Gate dimensions
     constexpr float DEFAULT_GATE_WIDTH = 100.0f;
     constexpr float DEFAULT_GATE_HEIGHT = 60.0f;
     constexpr float INPUT_OUTPUT_SIZE = 50.0f;
@@ -114,15 +110,14 @@ namespace Config {
         const Color IO_TEXT = {0xe0, 0xe0, 0xe6, 0xff};          // Soft white text
         const Color IO_OUTLINE = {0x5a, 0x5a, 0x66, 0xff};       // Subtle outline
 
-        // Gate-specific colors - sophisticated and harmonious
-        const Color AND_GATE = {0x4a, 0x9e, 0xff, 0xff};         // Soft blue
-        const Color AND_GATE_LIGHT = {0x6b, 0xb6, 0xff, 0xff};   // Light soft blue
-        const Color OR_GATE = {0x5d, 0xc9, 0x60, 0xff};          // Soft green
-        const Color OR_GATE_LIGHT = {0x7d, 0xd9, 0x80, 0xff};    // Light soft green
-        const Color XOR_GATE = {0xff, 0x8a, 0x50, 0xff};         // Soft orange
-        const Color XOR_GATE_LIGHT = {0xff, 0xa6, 0x70, 0xff};   // Light soft orange
-        const Color NOT_GATE = {0x8b, 0x5a, 0xff, 0xff};         // Soft purple
-        const Color NOT_GATE_LIGHT = {0xa5, 0x7a, 0xff, 0xff};   // Light soft purple
+        const Color AND_GATE = {0x4a, 0x9e, 0xff, 0xff};
+        const Color AND_GATE_LIGHT = {0x6b, 0xb6, 0xff, 0xff};
+        const Color OR_GATE = {0x5d, 0xc9, 0x60, 0xff};
+        const Color OR_GATE_LIGHT = {0x7d, 0xd9, 0x80, 0xff};
+        const Color XOR_GATE = {0xff, 0x8a, 0x50, 0xff};
+        const Color XOR_GATE_LIGHT = {0xff, 0xa6, 0x70, 0xff};
+        const Color NOT_GATE = {0x8b, 0x5a, 0xff, 0xff};
+        const Color NOT_GATE_LIGHT = {0xa5, 0x7a, 0xff, 0xff};
     }
 }
 

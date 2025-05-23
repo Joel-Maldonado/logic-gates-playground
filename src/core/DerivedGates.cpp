@@ -54,14 +54,9 @@ void AndGate::draw() {
 
 OrGate::OrGate(std::string gateId, Vector2 pos, float w, float h)
     : LogicGate(gateId, pos, w, h) {
-    // Calculate pin positions to match the triangular OR gate visual shape
-    // Use same calculations as in GateRenderer::renderTriangularOrGateShape
     float actualWidth = fminf(w * 0.8f, h * 0.876f);
     float leftX = (w - actualWidth) / 2.0f;
     float curveDepth = h * 0.12f;
-
-    // Input pins: right edge of circle should touch left edge of gate body
-    // So pin center should be at (gate edge - pin radius)
     float pinRadius = Config::PIN_CLICK_RADIUS;
 
     // For input pin 0 (top): at 1/3 height on the curved edge
@@ -157,8 +152,28 @@ void XorGate::draw() {
 
 NotGate::NotGate(std::string gateId, Vector2 pos, float w, float h)
     : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 2.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    // Calculate pin positions to match the triangular NOT gate visual shape
+    // Use same calculations as in GateRenderer::renderNotGateSymbol
+    float triangleHeight = h;
+    float idealWidth = triangleHeight * 0.866f; // width = height * sqrt(3)/2 for equilateral triangle
+    float actualWidth = fminf(w * 0.7f, idealWidth); // Use 70% of available width for compact appearance
+    float leftX = (w - actualWidth) / 2.0f; // Centered within bounds
+
+    float pinRadius = Config::PIN_CLICK_RADIUS;
+    float inversionBubbleRadius = 5.0f; // Same as in renderNotGateSymbol
+
+    // Input pin: right edge of circle should touch left edge of triangle
+    // So pin center should be at (triangle left edge - pin radius)
+    float inputX = leftX - pinRadius;
+
+    // Output pin: left edge of circle should touch right edge of inversion bubble
+    // Triangle right point is at (leftX + actualWidth), bubble extends by its radius
+    // So pin center should be at (triangle right + bubble radius + pin radius)
+    float triangleRightEdge = leftX + actualWidth;
+    float outputX = triangleRightEdge + inversionBubbleRadius + pinRadius;
+
+    initializeInputPin(0, {inputX, h / 2.0f});
+    initializeOutputPin(0, {outputX, h / 2.0f});
 }
 
 void NotGate::evaluate() {

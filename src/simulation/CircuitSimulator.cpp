@@ -6,10 +6,12 @@ CircuitSimulator::CircuitSimulator() : nextGateId(0) {
 }
 
 void CircuitSimulator::update() {
+    // Update wire states first to propagate signals
     for (const auto& wire : wires) {
         wire->update();
     }
 
+    // Update gates twice to handle multi-level logic propagation
     for (const auto& gate : gates) {
         gate->update();
     }
@@ -49,12 +51,14 @@ bool CircuitSimulator::removeGate(LogicGate* gate) {
         return false;
     }
 
+    // Clean up all wires connected to this gate before deletion
     std::vector<Wire*> wiresToRemove = gate->prepareForDeletion();
 
     for (Wire* wire : wiresToRemove) {
         removeWire(wire);
     }
 
+    // Find and remove the gate from the collection
     auto it = std::find_if(gates.begin(), gates.end(),
         [gate](const std::unique_ptr<LogicGate>& ptr) {
             return ptr.get() == gate;

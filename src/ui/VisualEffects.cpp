@@ -4,18 +4,22 @@
 #include <vector>
 
 float VisualEffects::easeInOut(float t) {
+    // Cubic ease-in-out: slow start, fast middle, slow end
     return t < 0.5f ? 2.0f * t * t : 1.0f - 2.0f * (1.0f - t) * (1.0f - t);
 }
 
 float VisualEffects::easeOut(float t) {
+    // Quadratic ease-out: fast start, slow end
     return 1.0f - (1.0f - t) * (1.0f - t);
 }
 
 float VisualEffects::easeIn(float t) {
+    // Quadratic ease-in: slow start, fast end
     return t * t;
 }
 
 float VisualEffects::bounce(float t) {
+    // Bounce easing with 4 decreasing bounces using magic numbers from CSS spec
     if (t < 1.0f / 2.75f) {
         return 7.5625f * t * t;
     } else if (t < 2.0f / 2.75f) {
@@ -42,6 +46,7 @@ Color VisualEffects::lerpColor(Color start, Color end, float t) {
 
 Color VisualEffects::addGlow(Color base, float intensity) {
     intensity = std::clamp(intensity, 0.0f, 1.0f);
+    // Brighten each RGB component towards white (255) by intensity amount
     return {
         (unsigned char)std::min(255, (int)(base.r + intensity * (255 - base.r))),
         (unsigned char)std::min(255, (int)(base.g + intensity * (255 - base.g))),
@@ -60,7 +65,7 @@ void VisualEffects::drawRoundedRectangleGradient(Rectangle rect, float roundness
     // Draw gradient using multiple horizontal lines, all with proper rounding
     int steps = (int)rect.height;
     for (int i = 0; i < steps; i++) {
-        float t = (float)i / (float)(steps - 1);
+        float t = (float)i / (float)(steps - 1);  // Normalize position (0.0 to 1.0)
         Color lineColor = lerpColor(topColor, bottomColor, t);
         Rectangle lineRect = {rect.x, rect.y + i, rect.width, 1.0f};
 
@@ -87,11 +92,11 @@ void VisualEffects::drawRoundedRectangleWithShadow(Rectangle rect, float roundne
 
 void VisualEffects::drawCircleWithGlow(Vector2 center, float radius, Color color,
                                      Color glowColor, float glowRadius) {
-    // Draw glow layers
+    // Draw glow layers from largest to smallest for proper alpha blending
     for (int i = 3; i >= 1; i--) {
         float currentRadius = radius + (glowRadius * i / 3.0f);
         Color currentGlow = glowColor;
-        currentGlow.a = (unsigned char)(glowColor.a / (i + 1));
+        currentGlow.a = (unsigned char)(glowColor.a / (i + 1));  // Fade alpha with distance
         DrawCircleV(center, currentRadius, currentGlow);
     }
 
@@ -114,6 +119,7 @@ void VisualEffects::drawLineWithGlow(Vector2 start, Vector2 end, float thickness
 }
 
 float VisualEffects::getPulseValue(float speed) {
+    // Convert sine wave (-1 to 1) to pulse value (0 to 1)
     return (sinf(getTime() * speed) + 1.0f) * 0.5f;
 }
 
@@ -121,6 +127,7 @@ float VisualEffects::getHoverTransition(bool isHovered, float& currentValue, flo
     float target = isHovered ? 1.0f : 0.0f;
     float speed = Config::HOVER_TRANSITION_SPEED;
 
+    // Smoothly transition current value towards target
     if (currentValue < target) {
         currentValue = std::min(target, currentValue + speed * deltaTime);
     } else if (currentValue > target) {
@@ -132,6 +139,7 @@ float VisualEffects::getHoverTransition(bool isHovered, float& currentValue, flo
 
 Vector2 VisualEffects::getShakeOffset(float intensity, float frequency) {
     float time = getTime();
+    // Use different frequencies for X and Y to create natural shake motion
     return {
         sinf(time * frequency) * intensity,
         cosf(time * frequency * 1.3f) * intensity
@@ -143,7 +151,7 @@ void VisualEffects::updateParticle(Particle& particle, float deltaTime) {
     particle.position.y += particle.velocity.y * deltaTime;
     particle.life -= deltaTime;
 
-    // Fade out over time
+    // Fade out over time based on remaining life percentage
     float lifeRatio = particle.life / particle.maxLife;
     particle.color.a = (unsigned char)(255 * lifeRatio);
 }

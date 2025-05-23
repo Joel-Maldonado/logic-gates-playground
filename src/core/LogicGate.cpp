@@ -24,7 +24,7 @@ void LogicGate::update() {
 
 void LogicGate::markDirty() {
     if (!isDirty) {
-        isDirty = true;
+        isDirty = true;  // Mark for re-evaluation on next update cycle
     }
 }
 
