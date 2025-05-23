@@ -1,6 +1,8 @@
 #include "ui/UIManager.h"
 #include "app/Config.h"
 #include <raymath.h>
+#include <algorithm>
+#include <cmath>
 
 UIManager::UIManager(std::shared_ptr<CircuitSimulator> sim)
     : isDrawingWire(false),
@@ -325,20 +327,40 @@ void UIManager::renderGrid() {
     Vector2 screenTopLeft = GetScreenToWorld2D({0, 0}, camera);
     Vector2 screenBottomRight = GetScreenToWorld2D({(float)GetScreenWidth(), (float)GetScreenHeight()}, camera);
 
-    // Calculate the starting and ending grid lines
+    // Calculate the starting and ending grid points
     int startX = floor(screenTopLeft.x / Config::GRID_SIZE) * Config::GRID_SIZE;
     int startY = floor(screenTopLeft.y / Config::GRID_SIZE) * Config::GRID_SIZE;
     int endX = ceil(screenBottomRight.x / Config::GRID_SIZE) * Config::GRID_SIZE;
     int endY = ceil(screenBottomRight.y / Config::GRID_SIZE) * Config::GRID_SIZE;
 
-    // Draw vertical grid lines
-    for (float x = startX; x <= endX; x += Config::GRID_SIZE) {
+    // Draw subtle grid lines for major divisions
+    float majorGridSize = Config::GRID_SIZE * 4.0f;
+    int majorStartX = floor(screenTopLeft.x / majorGridSize) * majorGridSize;
+    int majorStartY = floor(screenTopLeft.y / majorGridSize) * majorGridSize;
+    int majorEndX = ceil(screenBottomRight.x / majorGridSize) * majorGridSize;
+    int majorEndY = ceil(screenBottomRight.y / majorGridSize) * majorGridSize;
+
+    // Draw major grid lines (very subtle)
+    for (float x = majorStartX; x <= majorEndX; x += majorGridSize) {
         DrawLineV({x, screenTopLeft.y}, {x, screenBottomRight.y}, Config::Colors::GRID_LINE);
     }
-
-    // Draw horizontal grid lines
-    for (float y = startY; y <= endY; y += Config::GRID_SIZE) {
+    for (float y = majorStartY; y <= majorEndY; y += majorGridSize) {
         DrawLineV({screenTopLeft.x, y}, {screenBottomRight.x, y}, Config::Colors::GRID_LINE);
+    }
+
+    // Draw grid dots at intersections
+    float dotSize = 1.5f / camera.zoom; // Scale dots with zoom
+    dotSize = std::max(0.5f, std::min(2.0f, dotSize)); // Clamp dot size
+
+    for (float x = startX; x <= endX; x += Config::GRID_SIZE) {
+        for (float y = startY; y <= endY; y += Config::GRID_SIZE) {
+            // Make dots more visible at major intersections
+            bool isMajorIntersection = (fmod(x, majorGridSize) == 0.0f && fmod(y, majorGridSize) == 0.0f);
+            Color dotColor = isMajorIntersection ? Config::Colors::GRID_LINE : Config::Colors::GRID_DOT;
+            float currentDotSize = isMajorIntersection ? dotSize * 1.5f : dotSize;
+
+            DrawCircleV({x, y}, currentDotSize, dotColor);
+        }
     }
 }
 

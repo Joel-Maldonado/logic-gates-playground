@@ -31,25 +31,6 @@ public:
     void draw() override;
 };
 
-class NandGate : public LogicGate {
-public:
-    NandGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
-    void evaluate() override;
-    void draw() override;
-};
 
-class NorGate : public LogicGate {
-public:
-    NorGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
-    void evaluate() override;
-    void draw() override;
-};
-
-class XnorGate : public LogicGate {
-public:
-    XnorGate(std::string gateId, Vector2 pos, float w = 60.0f, float h = 40.0f);
-    void evaluate() override;
-    void draw() override;
-};
 
 #endif // DERIVED_GATES_H

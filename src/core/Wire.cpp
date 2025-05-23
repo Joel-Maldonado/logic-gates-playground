@@ -4,14 +4,15 @@
 #include "rlgl.h"
 #include <raymath.h>
 #include "ui/WireRouter.h"
+#include "ui/VisualEffects.h"
 #include "app/Config.h"
 #include <stdexcept>
 #include <cmath>
 #include <iostream>
 
-Color Wire::Style::off = DARKGRAY;
-Color Wire::Style::on = SKYBLUE;
-Color Wire::Style::selected = YELLOW;
+Color Wire::Style::off = Config::Colors::WIRE_OFF;
+Color Wire::Style::on = Config::Colors::WIRE_ON;
+Color Wire::Style::selected = Config::Colors::WIRE_SELECTED;
 
 Wire::Wire(GatePin* srcPin, GatePin* dstPin)
     : isSelected(false), state_(false), sourcePin_(srcPin), destPin_(dstPin),
@@ -81,11 +82,43 @@ void Wire::draw() const {
             thickness = Config::WIRE_THICKNESS_SELECTED;
         }
 
-        drawWirePath(controlPoints_, wireColorToUse, thickness);
+        // Draw wire with enhanced visual effects
+        drawEnhancedWirePath(controlPoints_, wireColorToUse, thickness);
 
+        // Draw animated signal for active wires (no glow)
+        if (state_ && !isSelected) {
+            float signalProgress = fmod(GetTime() * 2.0f, 1.0f); // 2 signals per second
+            // Draw simple animated signal without glow
+            if (!controlPoints_.empty()) {
+                float totalLength = 0.0f;
+                std::vector<float> segmentLengths;
+                for (size_t i = 0; i < controlPoints_.size() - 1; i++) {
+                    float length = Vector2Distance(controlPoints_[i], controlPoints_[i + 1]);
+                    segmentLengths.push_back(length);
+                    totalLength += length;
+                }
+
+                if (totalLength > 0.0f) {
+                    float targetDistance = signalProgress * totalLength;
+                    float currentDistance = 0.0f;
+
+                    for (size_t i = 0; i < segmentLengths.size(); i++) {
+                        if (currentDistance + segmentLengths[i] >= targetDistance) {
+                            float t = (targetDistance - currentDistance) / segmentLengths[i];
+                            Vector2 position = Vector2Lerp(controlPoints_[i], controlPoints_[i + 1], t);
+                            DrawCircleV(position, 3.0f, Config::Colors::WIRE_ON);
+                            break;
+                        }
+                        currentDistance += segmentLengths[i];
+                    }
+                }
+            }
+        }
+
+        // Draw control points for selected wires (no glow)
         if (isSelected) {
             for (const auto& point : controlPoints_) {
-                DrawCircleV(point, 4.0f, YELLOW);
+                DrawCircleV(point, 4.0f, Config::Colors::WIRE_SELECTED);
             }
         }
     } catch (const std::exception& e) {
@@ -129,6 +162,52 @@ void Wire::drawWirePath(const std::vector<Vector2>& points, Color color, float t
             Vector2 arrowRight = Vector2Add(arrowPos, Vector2Scale(perp, 4.0f));
 
             // Draw arrow
+            DrawTriangle(arrowTip, arrowLeft, arrowRight, color);
+        }
+    }
+}
+
+void Wire::drawEnhancedWirePath(const std::vector<Vector2>& points, Color color, float thickness) const {
+    if (points.size() < 2) {
+        return;
+    }
+
+    // Draw line segments without glow effects
+    for (size_t i = 0; i < points.size() - 1; i++) {
+        DrawLineEx(points[i], points[i + 1], thickness, color);
+    }
+
+    // Draw enhanced direction arrow
+    if (points.size() >= 2) {
+        Vector2 lastSegmentStart = points[points.size() - 2];
+        Vector2 lastSegmentEnd = points[points.size() - 1];
+        float distance = Vector2Distance(lastSegmentStart, lastSegmentEnd);
+
+        if (distance > 30.0f) {
+            // Add subtle animation for active wires
+            bool isActive = state_ && !isSelected;
+            float t = 0.8f;
+            if (isActive) {
+                float pulseValue = VisualEffects::getPulseValue(4.0f);
+                t = 0.75f + pulseValue * 0.1f; // Subtle movement
+            }
+
+            Vector2 arrowPos = {
+                lastSegmentStart.x + t * (lastSegmentEnd.x - lastSegmentStart.x),
+                lastSegmentStart.y + t * (lastSegmentEnd.y - lastSegmentStart.y)
+            };
+
+            // Calculate direction and perpendicular vectors
+            Vector2 dir = Vector2Normalize(Vector2Subtract(lastSegmentEnd, lastSegmentStart));
+            Vector2 perp = { -dir.y, dir.x };
+
+            // Create arrow triangle points
+            float arrowSize = isActive ? 9.0f : 8.0f;
+            Vector2 arrowTip = Vector2Add(arrowPos, Vector2Scale(dir, arrowSize));
+            Vector2 arrowLeft = Vector2Subtract(arrowPos, Vector2Scale(perp, arrowSize * 0.5f));
+            Vector2 arrowRight = Vector2Add(arrowPos, Vector2Scale(perp, arrowSize * 0.5f));
+
+            // Draw arrow without glow
             DrawTriangle(arrowTip, arrowLeft, arrowRight, color);
         }
     }

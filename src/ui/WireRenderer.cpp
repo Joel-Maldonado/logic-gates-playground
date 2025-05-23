@@ -1,4 +1,5 @@
 #include "ui/WireRenderer.h"
+#include "ui/VisualEffects.h"
 #include "app/Config.h"
 #include "core/GatePin.h"
 #include <raymath.h>
@@ -31,20 +32,22 @@ void WireRenderer::renderWirePathPreview(const std::vector<Vector2>& path, Color
         return;
     }
 
-    // Draw line segments between control points
+    // Draw line segments without glow effect
     for (size_t i = 0; i < path.size() - 1; i++) {
         DrawLineEx(path[i], path[i + 1], thickness, color);
     }
 
-    // Add direction arrow if the last segment is long enough
+    // Add animated direction arrow if the last segment is long enough
     if (path.size() >= 2) {
         Vector2 lastSegmentStart = path[path.size() - 2];
         Vector2 lastSegmentEnd = path[path.size() - 1];
         float distance = Vector2Distance(lastSegmentStart, lastSegmentEnd);
 
         if (distance > 30.0f) {
-            // Position arrow at 80% along the last segment
-            float t = 0.8f;
+            // Animate arrow position
+            float pulseValue = VisualEffects::getPulseValue(6.0f);
+            float t = 0.7f + pulseValue * 0.2f; // Animate between 70% and 90%
+
             Vector2 arrowPos = {
                 lastSegmentStart.x + t * (lastSegmentEnd.x - lastSegmentStart.x),
                 lastSegmentStart.y + t * (lastSegmentEnd.y - lastSegmentStart.y)
@@ -54,11 +57,13 @@ void WireRenderer::renderWirePathPreview(const std::vector<Vector2>& path, Color
             Vector2 dir = Vector2Normalize(Vector2Subtract(lastSegmentEnd, lastSegmentStart));
             Vector2 perp = { -dir.y, dir.x };
 
-            // Create arrow triangle points
-            Vector2 arrowTip = Vector2Add(arrowPos, Vector2Scale(dir, 8.0f));
-            Vector2 arrowLeft = Vector2Subtract(arrowPos, Vector2Scale(perp, 4.0f));
-            Vector2 arrowRight = Vector2Add(arrowPos, Vector2Scale(perp, 4.0f));
+            // Create arrow triangle points with slight animation
+            float arrowSize = 8.0f + pulseValue * 2.0f;
+            Vector2 arrowTip = Vector2Add(arrowPos, Vector2Scale(dir, arrowSize));
+            Vector2 arrowLeft = Vector2Subtract(arrowPos, Vector2Scale(perp, arrowSize * 0.5f));
+            Vector2 arrowRight = Vector2Add(arrowPos, Vector2Scale(perp, arrowSize * 0.5f));
 
+            // Draw arrow without glow
             DrawTriangle(arrowTip, arrowLeft, arrowRight, color);
         }
     }

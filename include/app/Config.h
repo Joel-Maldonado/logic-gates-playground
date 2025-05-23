@@ -30,7 +30,7 @@ namespace Config {
     // Pin settings
     constexpr float PIN_CLICK_RADIUS = 8.0f;
     constexpr float PIN_HOVER_TOLERANCE = 8.0f;
-    constexpr float PIN_LABEL_FONT_SIZE = 14.0f;
+    constexpr float PIN_LABEL_FONT_SIZE = 16.0f;
     constexpr float PIN_LABEL_OFFSET = 16.0f;
 
     // Wire settings
@@ -40,9 +40,9 @@ namespace Config {
     constexpr float WIRE_HOVER_TOLERANCE = 8.0f;
 
     // Gate visual settings
-    constexpr float GATE_LABEL_FONT_SIZE = 16.0f;
+    constexpr float GATE_LABEL_FONT_SIZE = 18.0f;
     constexpr float GATE_OUTLINE_THICKNESS = 2.0f;
-    constexpr float GATE_OUTLINE_THICKNESS_SELECTED = 4.0f;
+    constexpr float GATE_OUTLINE_THICKNESS_SELECTED = 2.0f;
 
     // Animation settings
     constexpr float HOVER_ANIMATION_SPEED = 0.1f;
@@ -53,53 +53,76 @@ namespace Config {
     constexpr float DRAG_PREVIEW_ALPHA = 0.7f;
     constexpr float DRAG_THRESHOLD = 3.0f;
 
-    // Colors
+    // Animation and timing settings
+    constexpr float ANIMATION_SPEED = 4.0f;
+    constexpr float HOVER_TRANSITION_SPEED = 8.0f;
+    constexpr float PULSE_SPEED = 2.0f;
+    constexpr float GLOW_INTENSITY = 0.3f;
+    constexpr float SHADOW_OFFSET = 2.0f;
+    constexpr float CORNER_RADIUS = 8.0f;
+
+    // Colors - Modern sleek theme with subtle sophistication
     namespace Colors {
+        // Base palette - sophisticated dark theme
+        const Color BACKGROUND = {0x12, 0x12, 0x16, 0xff};       // Deep charcoal
+        const Color SURFACE = {0x1e, 0x1e, 0x24, 0xff};          // Dark surface
+        const Color SURFACE_VARIANT = {0x28, 0x28, 0x30, 0xff};  // Card surfaces
+
+        // Accent colors - muted and sophisticated
+        const Color PRIMARY = {0x4a, 0x9e, 0xff, 0xff};          // Soft blue
+        const Color PRIMARY_VARIANT = {0x3a, 0x7e, 0xd9, 0xff};  // Darker soft blue
+        const Color SECONDARY = {0x8b, 0x5a, 0xff, 0xff};        // Soft purple
+        const Color TERTIARY = {0xff, 0x8a, 0x50, 0xff};         // Soft orange
+
         // UI colors
-        const Color BACKGROUND = {0x1f, 0x29, 0x37, 0xff};       // Dark, desaturated blue-gray
-        const Color PALETTE = {0x37, 0x41, 0x51, 0xff};          // Lighter gray for palette
-        const Color PALETTE_ITEM = {0x4b, 0x55, 0x63, 0xff};
-        const Color PALETTE_ITEM_SELECTED = {0x6b, 0x72, 0x80, 0xff};
-        const Color PALETTE_TEXT = WHITE;
-        const Color SELECTION_HIGHLIGHT = YELLOW;
-        const Color GRID_LINE = {0x80, 0x80, 0x80, 0x33};        // Light gray with low opacity
+        const Color PALETTE = {0x1e, 0x1e, 0x24, 0xff};          // Surface color
+        const Color PALETTE_ITEM = {0x28, 0x28, 0x30, 0xff};     // Card color
+        const Color PALETTE_ITEM_HOVER = {0x32, 0x32, 0x3c, 0xff}; // Hover state
+        const Color PALETTE_ITEM_SELECTED = {0x3c, 0x3c, 0x48, 0xff}; // Selected state
+        const Color PALETTE_TEXT = {0xe0, 0xe0, 0xe6, 0xff};     // Soft white text
+        const Color SELECTION_HIGHLIGHT = {0xff, 0xd7, 0x00, 0xff}; // Yellow highlight
+        const Color GRID_LINE = {0x38, 0x38, 0x42, 0x30};        // Very subtle grid lines
+        const Color GRID_DOT = {0x42, 0x42, 0x4e, 0x40};         // Subtle grid dots
 
-        // Wire colors
-        const Color WIRE_OFF = {0x80, 0x80, 0x80, 0xff};         // Medium gray
-        const Color WIRE_ON = {0x00, 0xbf, 0xff, 0xff};          // Bright blue
-        const Color WIRE_SELECTED = YELLOW;
-        const Color WIRE_PREVIEW = {0xff, 0xd7, 0x00, 0xff};     // Gold
-        const Color WIRE_INVALID = {0xff, 0x45, 0x00, 0xff};     // Orange-red
+        // Wire colors - subtle and elegant
+        const Color WIRE_OFF = {0x5a, 0x5a, 0x66, 0xff};         // Muted gray
+        const Color WIRE_ON = {0x4a, 0x9e, 0xff, 0xff};          // Soft blue active
+        const Color WIRE_SELECTED = {0xff, 0x8a, 0x50, 0xff};    // Soft orange selection
+        const Color WIRE_PREVIEW = {0x8b, 0x5a, 0xff, 0xff};     // Soft purple preview
+        const Color WIRE_INVALID = {0xff, 0x6b, 0x6b, 0xff};     // Soft red error
 
-        // Pin colors
-        const Color PIN_STATE_ON = {0x00, 0xbf, 0xff, 0xff};     // Bright blue
-        const Color PIN_STATE_OFF = {0x50, 0x50, 0x50, 0xff};    // Dark gray
-        const Color PIN_HOVER = {0x7f, 0xff, 0xd4, 0xff};        // Aquamarine
-        const Color PIN_VALID_CONNECTION = {0x32, 0xcd, 0x32, 0xff}; // Lime green
-        const Color PIN_INVALID_CONNECTION = {0xff, 0x45, 0x00, 0xff}; // Orange-red
-        const Color PIN_TEXT = WHITE;
+        // Pin colors - sophisticated and clear
+        const Color PIN_STATE_ON = {0x4a, 0x9e, 0xff, 0xff};     // Soft blue active
+        const Color PIN_STATE_OFF = {0x5a, 0x5a, 0x66, 0xff};    // Muted gray inactive
+        const Color PIN_HOVER = {0x8b, 0x5a, 0xff, 0xff};        // Soft purple hover
+        const Color PIN_VALID_CONNECTION = {0x5d, 0xc9, 0x60, 0xff}; // Soft green valid
+        const Color PIN_INVALID_CONNECTION = {0xff, 0x6b, 0x6b, 0xff}; // Soft red invalid
+        const Color PIN_TEXT = {0xe0, 0xe0, 0xe6, 0xff};         // Soft white text
 
-        // Gate colors
-        const Color GATE_FILL = {0x36, 0x45, 0x56, 0xff};        // Slate blue-gray
-        const Color GATE_OUTLINE = {0x20, 0x20, 0x20, 0xff};     // Very dark gray
-        const Color GATE_TEXT = WHITE;
+        // Gate colors - clean modern style
+        const Color GATE_FILL = {0x28, 0x28, 0x30, 0xff};        // Base surface
+        const Color GATE_FILL_LIGHT = {0x32, 0x32, 0x3c, 0xff};  // Highlight
+        const Color GATE_OUTLINE = {0x5a, 0x5a, 0x66, 0xff};     // Subtle outline
+        const Color GATE_SHADOW = {0x00, 0x00, 0x00, 0x20};      // Subtle drop shadow
+        const Color GATE_TEXT = {0xe0, 0xe0, 0xe6, 0xff};        // Soft white text
 
-        // Input/Output colors
-        const Color INPUT_OFF = {0x50, 0x50, 0x50, 0xff};        // Dark gray
-        const Color INPUT_ON = {0x32, 0xcd, 0x32, 0xff};         // Lime green
-        const Color OUTPUT_OFF = {0x50, 0x50, 0x50, 0xff};       // Dark gray
-        const Color OUTPUT_ON = {0xff, 0x45, 0x00, 0xff};        // Orange-red
-        const Color IO_TEXT = WHITE;
-        const Color IO_OUTLINE = {0x20, 0x20, 0x20, 0xff};       // Very dark gray
+        // Input/Output colors - clear but not harsh
+        const Color INPUT_OFF = {0x5a, 0x5a, 0x66, 0xff};        // Muted gray off
+        const Color INPUT_ON = {0x5d, 0xc9, 0x60, 0xff};         // Soft green active
+        const Color OUTPUT_OFF = {0x5a, 0x5a, 0x66, 0xff};       // Muted gray off
+        const Color OUTPUT_ON = {0xff, 0x8a, 0x50, 0xff};        // Soft orange active
+        const Color IO_TEXT = {0xe0, 0xe0, 0xe6, 0xff};          // Soft white text
+        const Color IO_OUTLINE = {0x5a, 0x5a, 0x66, 0xff};       // Subtle outline
 
-        // Gate-specific colors
-        const Color AND_GATE = {0x41, 0x69, 0xe1, 0xff};         // Royal blue
-        const Color OR_GATE = {0x9a, 0xcd, 0x32, 0xff};          // Yellow-green
-        const Color XOR_GATE = {0xff, 0x8c, 0x00, 0xff};         // Dark orange
-        const Color NOT_GATE = {0xdc, 0x14, 0x3c, 0xff};         // Crimson
-        const Color NAND_GATE = {0x48, 0x3d, 0x8b, 0xff};        // Dark slate blue
-        const Color NOR_GATE = {0x2e, 0x8b, 0x57, 0xff};         // Sea green
-        const Color XNOR_GATE = {0xda, 0x70, 0xd6, 0xff};        // Orchid
+        // Gate-specific colors - sophisticated and harmonious
+        const Color AND_GATE = {0x4a, 0x9e, 0xff, 0xff};         // Soft blue
+        const Color AND_GATE_LIGHT = {0x6b, 0xb6, 0xff, 0xff};   // Light soft blue
+        const Color OR_GATE = {0x5d, 0xc9, 0x60, 0xff};          // Soft green
+        const Color OR_GATE_LIGHT = {0x7d, 0xd9, 0x80, 0xff};    // Light soft green
+        const Color XOR_GATE = {0xff, 0x8a, 0x50, 0xff};         // Soft orange
+        const Color XOR_GATE_LIGHT = {0xff, 0xa6, 0x70, 0xff};   // Light soft orange
+        const Color NOT_GATE = {0x8b, 0x5a, 0xff, 0xff};         // Soft purple
+        const Color NOT_GATE_LIGHT = {0xa5, 0x7a, 0xff, 0xff};   // Light soft purple
     }
 }
 

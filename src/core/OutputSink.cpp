@@ -4,7 +4,7 @@
 
 namespace {
     constexpr float CONNECTOR_RADIUS = 5.0f;
-    constexpr float LABEL_FONT_SIZE = 12.0f;
+    constexpr float LABEL_FONT_SIZE = 14.0f;
     constexpr float LABEL_SPACING = 3.0f;
     constexpr Color SELECTION_COLOR = YELLOW;
 }
@@ -38,7 +38,7 @@ void OutputSink::draw() {
 
     // Draw main body
     DrawCircleV(center, radius, active ? style.fillOn : style.fillOff);
-    
+
     // Draw outline (thicker if selected)
     if (getIsSelected()) {
         DrawCircleLines(center.x, center.y, radius, SELECTION_COLOR);
@@ -46,7 +46,7 @@ void OutputSink::draw() {
     } else {
         DrawCircleLines(center.x, center.y, radius, style.outlineColor);
     }
-    
+
     // Draw label if present
     if (!label.empty()) {
         Vector2 textSize = MeasureTextEx(GetFontDefault(), label.c_str(), LABEL_FONT_SIZE, 1.0f);
@@ -56,7 +56,7 @@ void OutputSink::draw() {
         };
         DrawTextEx(GetFontDefault(), label.c_str(), textPos, LABEL_FONT_SIZE, 1.0f, style.textColor);
     }
-    
+
     // Draw input pin
     if (getInputPinCount() > 0) {
         const GatePin* pin = getInputPin(0);

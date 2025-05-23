@@ -47,6 +47,7 @@ public:
 
 private:
     void drawWirePath(const std::vector<Vector2>& points, Color color, float thickness) const;
+    void drawEnhancedWirePath(const std::vector<Vector2>& points, Color color, float thickness) const;
 
 public:
     void onGateDeleted(LogicGate* deletedGate);

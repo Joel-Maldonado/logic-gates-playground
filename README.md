@@ -6,7 +6,7 @@ A simple, interactive playground for experimenting with digital logic gates and 
 
 ## Overview
 
-- Create various logic gates (AND, OR, XOR, NOT, NAND, NOR, XNOR)
+- Create various logic gates (AND, OR, XOR, NOT)
 - Add input sources and output sinks
 - Connect gates with wires to build circuits
 - Drag and drop components for easy circuit design

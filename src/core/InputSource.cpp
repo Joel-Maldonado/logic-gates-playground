@@ -21,8 +21,8 @@ namespace { // Anonymous namespace for helpers and constants
     void drawSourceStateIndicator(const Rectangle& bounds, bool currentState, Color textColor) {
         const char* stateText = currentState ? "ON" : "OFF";
         int tempFontSize = static_cast<int>(bounds.height / 2.0f);
-        if (tempFontSize < 10) {
-            tempFontSize = 10;
+        if (tempFontSize < 12) {
+            tempFontSize = 12;
         }
         float fontSize = static_cast<float>(tempFontSize);
 
@@ -36,7 +36,7 @@ namespace { // Anonymous namespace for helpers and constants
 
     void drawSourceComponentLabel(const Rectangle& bounds, const std::string& label) {
         if (!label.empty()) {
-            const float labelFontSize = 12.0f;
+            const float labelFontSize = 14.0f;
             Vector2 labelTextSize = MeasureTextEx(GetFontDefault(), label.c_str(), labelFontSize, 1.0f);
             Vector2 labelPosition = {
                 bounds.x + (bounds.width - labelTextSize.x) / 2.0f,

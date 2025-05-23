@@ -1,4 +1,5 @@
 #include "ui/GateRenderer.h"
+#include "ui/VisualEffects.h"
 #include "app/Config.h"
 #include <raymath.h>
 #include "core/DerivedGates.h"
@@ -6,6 +7,7 @@
 #include "core/OutputSink.h"
 #include <typeinfo>
 #include <string>
+#include <cmath>
 
 GateRenderer::GateRenderer() {
 }
@@ -71,12 +73,6 @@ GateType GateRenderer::determineGateType(const LogicGate* gate) const {
         return GateType::XOR;
     } else if (dynamic_cast<const NotGate*>(gate)) {
         return GateType::NOT;
-    } else if (dynamic_cast<const NandGate*>(gate)) {
-        return GateType::NAND;
-    } else if (dynamic_cast<const NorGate*>(gate)) {
-        return GateType::NOR;
-    } else if (dynamic_cast<const XnorGate*>(gate)) {
-        return GateType::XNOR;
     }
 
     return GateType::NONE;
@@ -94,191 +90,167 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
     Color outlineColor = gate->getIsSelected() ?
                         Config::Colors::SELECTION_HIGHLIGHT :
                         Config::Colors::GATE_OUTLINE;
+
+    // Add subtle animation for selected gates
+    float pulseValue = gate->getIsSelected() ? VisualEffects::getPulseValue() * 0.1f + 0.9f : 1.0f;
+
     Color fillColor;
+    Color fillColorLight;
 
     switch (type) {
         case GateType::INPUT_SOURCE:
         {
             const InputSource* inputSource = dynamic_cast<const InputSource*>(gate);
-            if (inputSource && inputSource->getCurrentState()) {
+            bool isActive = inputSource && inputSource->getCurrentState();
+
+            if (isActive) {
                 fillColor = Config::Colors::INPUT_ON;
+                fillColorLight = Config::Colors::INPUT_ON;
             } else {
                 fillColor = Config::Colors::INPUT_OFF;
+                fillColorLight = Config::Colors::GATE_FILL_LIGHT;
             }
 
-            // Draw input source as a square with rounded corners
-            DrawRectangleRounded(bounds, 0.3f, 8, fillColor);
-            DrawRectangleRoundedLines(bounds, 0.3f, 8, outlineColor);
+            // Draw shadow
+            Vector2 shadowOffset = {Config::SHADOW_OFFSET, Config::SHADOW_OFFSET};
+            Rectangle shadowBounds = {
+                bounds.x + shadowOffset.x,
+                bounds.y + shadowOffset.y,
+                bounds.width,
+                bounds.height
+            };
+            DrawRectangleRounded(shadowBounds, 0.3f, 8, Config::Colors::GATE_SHADOW);
 
-            // Draw label
-            const char* stateText = (inputSource && inputSource->getCurrentState()) ? "1" : "0";
+            // Draw rounded rectangle fill (solid color for now, can be enhanced later)
+            DrawRectangleRounded(bounds, 0.3f, 8, fillColor);
+
+            // Draw outline with pulse effect for selected
+            Color currentOutlineColor = outlineColor;
+            if (gate->getIsSelected()) {
+                currentOutlineColor = VisualEffects::lerpColor(outlineColor, Config::Colors::SELECTION_HIGHLIGHT, pulseValue);
+            }
+            DrawRectangleRoundedLines(bounds, 0.3f, 8, currentOutlineColor);
+
+            // No glow effect for active inputs
+
+            // Draw input label with enhanced text
+            const char* stateText = isActive ? "1" : "0";
             float fontSize = Config::GATE_LABEL_FONT_SIZE * 1.5f;
             Vector2 textSize = MeasureTextEx(GetFontDefault(), stateText, fontSize, 1.0f);
             Vector2 textPos = {
                 bounds.x + (bounds.width - textSize.x) / 2.0f,
                 bounds.y + (bounds.height - textSize.y) / 2.0f
             };
-            DrawTextEx(GetFontDefault(), stateText, textPos, fontSize, 1.0f, Config::Colors::IO_TEXT);
 
-            // Draw "IN" label above
+            if (isActive) {
+                VisualEffects::drawTextWithShadow(stateText, textPos, fontSize,
+                                                Config::Colors::IO_TEXT, Config::Colors::GATE_SHADOW,
+                                                {1.0f, 1.0f});
+            } else {
+                DrawTextEx(GetFontDefault(), stateText, textPos, fontSize, 1.0f, Config::Colors::IO_TEXT);
+            }
+
+            // Draw "IN" label above with enhanced styling
             Vector2 labelSize = MeasureTextEx(GetFontDefault(), "IN", Config::GATE_LABEL_FONT_SIZE, 1.0f);
             Vector2 labelPos = {
                 bounds.x + (bounds.width - labelSize.x) / 2.0f,
                 bounds.y - labelSize.y - 5.0f
             };
-            DrawTextEx(GetFontDefault(), "IN", labelPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::IO_TEXT);
+            VisualEffects::drawTextWithShadow("IN", labelPos, Config::GATE_LABEL_FONT_SIZE,
+                                            Config::Colors::IO_TEXT, Config::Colors::GATE_SHADOW,
+                                            {1.0f, 1.0f});
 
             return;
         }
         case GateType::OUTPUT_SINK:
         {
             const OutputSink* outputSink = dynamic_cast<const OutputSink*>(gate);
-            if (outputSink && outputSink->isActive()) {
+            bool isActive = outputSink && outputSink->isActive();
+
+            if (isActive) {
                 fillColor = Config::Colors::OUTPUT_ON;
+                fillColorLight = Config::Colors::OUTPUT_ON;
             } else {
                 fillColor = Config::Colors::OUTPUT_OFF;
+                fillColorLight = Config::Colors::GATE_FILL_LIGHT;
             }
 
-            // Draw output sink as a circle
             Vector2 center = {
                 bounds.x + bounds.width / 2.0f,
                 bounds.y + bounds.height / 2.0f
             };
             float radius = bounds.width / 2.0f;
 
-            DrawCircleV(center, radius, fillColor);
-            DrawCircleLines(center.x, center.y, radius, outlineColor);
-            if (gate->getIsSelected()) {
-                DrawCircleLines(center.x, center.y, radius + 2.0f, outlineColor);
+            // Draw shadow
+            Vector2 shadowCenter = {center.x + Config::SHADOW_OFFSET, center.y + Config::SHADOW_OFFSET};
+            DrawCircleV(shadowCenter, radius, Config::Colors::GATE_SHADOW);
+
+            // Draw gradient circle (simulate with multiple circles)
+            for (int i = 0; i < 10; i++) {
+                float t = (float)i / 9.0f;
+                Color gradientColor = VisualEffects::lerpColor(fillColorLight, fillColor, t);
+                float currentRadius = radius * (1.0f - t * 0.1f);
+                DrawCircleV(center, currentRadius, gradientColor);
             }
 
-            // Draw state
-            const char* stateText = (outputSink && outputSink->isActive()) ? "1" : "0";
+            // Draw outline with pulse effect for selected
+            Color currentOutlineColor = outlineColor;
+            if (gate->getIsSelected()) {
+                currentOutlineColor = VisualEffects::lerpColor(outlineColor, Config::Colors::SELECTION_HIGHLIGHT, pulseValue);
+            }
+            DrawCircleLines(center.x, center.y, radius, currentOutlineColor);
+
+            // No glow effect for active outputs
+
+            // Draw state with enhanced text
+            const char* stateText = isActive ? "1" : "0";
             float fontSize = Config::GATE_LABEL_FONT_SIZE * 1.5f;
             Vector2 textSize = MeasureTextEx(GetFontDefault(), stateText, fontSize, 1.0f);
             Vector2 textPos = {
                 center.x - textSize.x / 2.0f,
                 center.y - textSize.y / 2.0f
             };
-            DrawTextEx(GetFontDefault(), stateText, textPos, fontSize, 1.0f, Config::Colors::IO_TEXT);
 
-            // Draw "OUT" label above
+            if (isActive) {
+                VisualEffects::drawTextWithShadow(stateText, textPos, fontSize,
+                                                Config::Colors::IO_TEXT, Config::Colors::GATE_SHADOW,
+                                                {1.0f, 1.0f});
+            } else {
+                DrawTextEx(GetFontDefault(), stateText, textPos, fontSize, 1.0f, Config::Colors::IO_TEXT);
+            }
+
+            // Draw "OUT" label above with enhanced styling
             Vector2 labelSize = MeasureTextEx(GetFontDefault(), "OUT", Config::GATE_LABEL_FONT_SIZE, 1.0f);
             Vector2 labelPos = {
                 center.x - labelSize.x / 2.0f,
                 bounds.y - labelSize.y - 5.0f
             };
-            DrawTextEx(GetFontDefault(), "OUT", labelPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::IO_TEXT);
+            VisualEffects::drawTextWithShadow("OUT", labelPos, Config::GATE_LABEL_FONT_SIZE,
+                                            Config::Colors::IO_TEXT, Config::Colors::GATE_SHADOW,
+                                            {1.0f, 1.0f});
 
             return;
         }
         case GateType::AND:
             fillColor = Config::Colors::AND_GATE;
-            renderAndGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+            fillColorLight = Config::Colors::AND_GATE_LIGHT;
+            renderEnhancedGateSymbol(bounds, fillColor, fillColorLight, outlineColor, outlineThickness, pulseValue, gate->getIsSelected(), "AND");
             break;
         case GateType::OR:
             fillColor = Config::Colors::OR_GATE;
-            renderOrGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+            fillColorLight = Config::Colors::OR_GATE_LIGHT;
+            renderEnhancedGateSymbol(bounds, fillColor, fillColorLight, outlineColor, outlineThickness, pulseValue, gate->getIsSelected(), "OR");
             break;
         case GateType::XOR:
             fillColor = Config::Colors::XOR_GATE;
-            renderXorGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+            fillColorLight = Config::Colors::XOR_GATE_LIGHT;
+            renderEnhancedGateSymbol(bounds, fillColor, fillColorLight, outlineColor, outlineThickness, pulseValue, gate->getIsSelected(), "XOR");
             break;
         case GateType::NOT:
             fillColor = Config::Colors::NOT_GATE;
-            renderNotGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+            fillColorLight = Config::Colors::NOT_GATE_LIGHT;
+            renderEnhancedGateSymbol(bounds, fillColor, fillColorLight, outlineColor, outlineThickness, pulseValue, gate->getIsSelected(), "NOT");
             break;
-        case GateType::NAND:
-        {
-            fillColor = Config::Colors::NAND_GATE;
-
-            // Use the full bounds for the AND part since we're removing the bubble
-            Rectangle andBounds = bounds;
-
-            // Draw the AND gate
-            renderAndGateSymbol(andBounds, fillColor, outlineColor, outlineThickness);
-
-            // Update the label
-            const char* label = "NAND";
-            Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-            Vector2 textPos = {
-                andBounds.x + (andBounds.width - textSize.x) / 2.0f,
-                andBounds.y + (andBounds.height - textSize.y) / 2.0f
-            };
-
-            // Clear the area where the AND text was drawn
-            DrawRectangle(textPos.x - 2, textPos.y - 2, textSize.x + 4, textSize.y + 4, fillColor);
-
-            // Draw the NAND text
-            DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
-            break;
-        }
-        case GateType::NOR:
-        {
-            fillColor = Config::Colors::NOR_GATE;
-
-            // Use the full bounds for the OR part since we're removing the bubble
-            Rectangle orBounds = bounds;
-
-            // Draw the OR gate
-            renderOrGateSymbol(orBounds, fillColor, outlineColor, outlineThickness);
-
-            // Update the label
-            const char* label = "NOR";
-            Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-
-            // Use the same approach as OR and XOR for consistency
-            float actualWidth = orBounds.width * 0.8f; // Same as in renderOrGateSymbol
-            float leftX = orBounds.x + (orBounds.width - actualWidth) / 2.0f;
-
-            // Calculate a better centered position for the text
-            float centerX = leftX + actualWidth * 0.4f; // Position at 40% of the gate width from the left
-            Vector2 textPos = {
-                centerX - textSize.x / 2.0f, // Center horizontally at the calculated position
-                orBounds.y + (orBounds.height - textSize.y) / 2.0f // Center vertically
-            };
-
-            // Clear the area where the OR text was drawn with a properly sized background
-            DrawRectangle(textPos.x - 1, textPos.y - 1, textSize.x + 2, textSize.y + 2, fillColor);
-
-            // Draw the NOR text
-            DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
-            break;
-        }
-        case GateType::XNOR:
-        {
-            fillColor = Config::Colors::XNOR_GATE;
-
-            // Use the full bounds for the XOR part since we're removing the bubble
-            Rectangle xorBounds = bounds;
-
-            // Draw the XOR gate
-            renderXorGateSymbol(xorBounds, fillColor, outlineColor, outlineThickness);
-
-            // Update the label - use a smaller font size for XNOR to fit better
-            const char* label = "XNOR"; // Make sure this is exactly "XNOR" with no extra characters
-            float fontSize = Config::GATE_LABEL_FONT_SIZE * 0.85f; // Smaller font for XNOR
-            Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
-
-            // Use the same approach as XOR for consistency
-            float actualWidth = xorBounds.width * 0.8f; // Same as in renderOrGateSymbol
-            float leftX = xorBounds.x + (xorBounds.width - actualWidth) / 2.0f;
-
-            // Calculate a better centered position for the text
-            float centerX = leftX + actualWidth * 0.4f; // Position at 40% of the gate width from the left
-            Vector2 textPos = {
-                centerX - textSize.x / 2.0f, // Center horizontally at the calculated position
-                xorBounds.y + (xorBounds.height - textSize.y) / 2.0f // Center vertically
-            };
-
-            // Draw the background with minimal padding to avoid clipping
-            // This ensures it stays completely within the gate body
-            DrawRectangle(textPos.x - 1, textPos.y - 1, textSize.x + 2, textSize.y + 2, fillColor);
-
-            // Draw the XNOR text
-            DrawTextEx(GetFontDefault(), label, textPos, fontSize, 1.0f, Config::Colors::GATE_TEXT);
-            break;
-        }
         default:
             // Fallback to a generic rectangle
             fillColor = Config::Colors::GATE_FILL;
@@ -323,10 +295,13 @@ void GateRenderer::renderPin(const GatePin* pin, bool showLabel) const {
     }
 
     Vector2 pos = pin->getAbsolutePosition();
-    Color pinColor = pin->getState() ? Config::Colors::PIN_STATE_ON : Config::Colors::PIN_STATE_OFF;
+    bool isActive = pin->getState();
+    Color pinColor = isActive ? Config::Colors::PIN_STATE_ON : Config::Colors::PIN_STATE_OFF;
 
-    // Draw pin circle
+    // Draw pin without glow effects
     DrawCircleV(pos, pin->getClickRadius(), pinColor);
+
+    // Draw outline
     DrawCircleLines(pos.x, pos.y, pin->getClickRadius(), Config::Colors::GATE_OUTLINE);
 
     // Draw pin state label if requested
@@ -342,20 +317,40 @@ void GateRenderer::renderPin(const GatePin* pin, bool showLabel) const {
             labelPos = {pos.x + Config::PIN_LABEL_OFFSET / 2.0f, pos.y - fontSize / 2.0f};
         }
 
-        DrawTextEx(GetFontDefault(), stateText, labelPos, fontSize, 1.0f, Config::Colors::PIN_TEXT);
+        if (isActive) {
+            VisualEffects::drawTextWithShadow(stateText, labelPos, fontSize,
+                                            Config::Colors::PIN_TEXT, Config::Colors::GATE_SHADOW,
+                                            {1.0f, 1.0f});
+        } else {
+            DrawTextEx(GetFontDefault(), stateText, labelPos, fontSize, 1.0f, Config::Colors::PIN_TEXT);
+        }
     }
 }
 
 void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
     // Create a D-shaped AND gate with flat left side and semicircle on right
-    Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
+    // Make it narrower for better proportions
+    float actualWidth = bounds.width * 0.85f;
+    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
+
+    Vector2 center = {leftX + actualWidth / 2.0f, bounds.y + bounds.height / 2.0f};
     float radius = bounds.height / 2.0f;
-    float flatPartWidth = bounds.width - radius;
+    float flatPartWidth = actualWidth - radius;
     int segments = 20; // Number of segments to approximate the semicircle
+
+    // Draw shadow first
+    Vector2 shadowOffset = {Config::SHADOW_OFFSET, Config::SHADOW_OFFSET};
+    Rectangle shadowRectPart = {
+        leftX + shadowOffset.x,
+        bounds.y + shadowOffset.y,
+        flatPartWidth,
+        bounds.height
+    };
+    DrawRectangleRec(shadowRectPart, Config::Colors::GATE_SHADOW);
 
     // Draw the rectangle part (left side)
     Rectangle rectPart = {
-        bounds.x,
+        leftX,
         bounds.y,
         flatPartWidth,
         bounds.height
@@ -363,7 +358,7 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
     DrawRectangleRec(rectPart, fillColor);
 
     // Draw the semicircle part using triangles for smooth appearance
-    Vector2 semicircleCenter = {bounds.x + flatPartWidth, center.y};
+    Vector2 semicircleCenter = {leftX + flatPartWidth, center.y};
     for (int i = 0; i < segments; i++) {
         float startAngle = PI/2 - (i * PI / segments);
         float endAngle = PI/2 - ((i + 1) * PI / segments);
@@ -382,9 +377,9 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
     }
 
     // Draw the outline
-    DrawLineEx({bounds.x, bounds.y}, {bounds.x + flatPartWidth, bounds.y}, outlineThickness, outlineColor); // Top
-    DrawLineEx({bounds.x, bounds.y}, {bounds.x, bounds.y + bounds.height}, outlineThickness, outlineColor); // Left
-    DrawLineEx({bounds.x, bounds.y + bounds.height}, {bounds.x + flatPartWidth, bounds.y + bounds.height}, outlineThickness, outlineColor); // Bottom
+    DrawLineEx({leftX, bounds.y}, {leftX + flatPartWidth, bounds.y}, outlineThickness, outlineColor); // Top
+    DrawLineEx({leftX, bounds.y}, {leftX, bounds.y + bounds.height}, outlineThickness, outlineColor); // Left
+    DrawLineEx({leftX, bounds.y + bounds.height}, {leftX + flatPartWidth, bounds.y + bounds.height}, outlineThickness, outlineColor); // Bottom
 
     // Draw the semicircle outline
     for (int i = 0; i < segments; i++) {
@@ -403,14 +398,16 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
         DrawLineEx(p1, p2, outlineThickness, outlineColor);
     }
 
-    // Draw gate label centered
+    // Draw gate label centered in the visible area
     const char* label = "AND";
     Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
     Vector2 textPos = {
-        bounds.x + (bounds.width - textSize.x) / 2.0f,
+        leftX + (actualWidth - textSize.x) / 2.0f,
         bounds.y + (bounds.height - textSize.y) / 2.0f
     };
-    DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
+    VisualEffects::drawTextWithShadow(label, textPos, Config::GATE_LABEL_FONT_SIZE,
+                                    Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
+                                    {1.0f, 1.0f});
 }
 
 void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
@@ -464,8 +461,6 @@ void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color o
         bounds.y + (bounds.height - textSize.y) / 2.0f
     };
 
-    // Background for text visibility
-    DrawRectangle(textPos.x - 1, textPos.y - 1, textSize.x + 2, textSize.y + 2, fillColor);
     DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
 }
 
@@ -506,8 +501,7 @@ void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color 
         bounds.y + (bounds.height - textSize.y) / 2.0f
     };
 
-    // Clear existing text from OR gate and draw XOR text
-    DrawRectangle(textPos.x - 1, textPos.y - 1, textSize.x + 2, textSize.y + 2, fillColor);
+    // Draw XOR text
     DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
 }
 
@@ -537,6 +531,16 @@ void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color 
     DrawLineEx(points[1], points[2], outlineThickness, outlineColor);
     DrawLineEx(points[2], points[0], outlineThickness, outlineColor);
 
+    // Draw the inversion circle (bubble) at the front of the NOT gate
+    Vector2 circleCenter = points[2]; // Right point of triangle
+    float circleRadius = 5.0f; // Smaller than pin radius (8.0f) but visible
+
+    // Draw filled circle
+    DrawCircleV(circleCenter, circleRadius, fillColor);
+
+    // Draw circle outline using DrawRing to match triangle outline thickness
+    DrawRing(circleCenter, circleRadius - outlineThickness/2.0f, circleRadius + outlineThickness/2.0f, 0.0f, 360.0f, 32, outlineColor);
+
     // Draw gate label centered at 40% from left edge
     const char* label = "NOT";
     Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
@@ -546,8 +550,6 @@ void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color 
         bounds.y + (bounds.height - textSize.y) / 2.0f
     };
 
-    // Background for text visibility
-    DrawRectangle(textPos.x - 1, textPos.y - 1, textSize.x + 2, textSize.y + 2, fillColor);
     DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
 }
 
@@ -580,3 +582,234 @@ void GateRenderer::renderWirePreview(const GatePin* startPin,
         DrawCircleV(hoverPin->getAbsolutePosition(), hoverPin->getClickRadius() * 1.5f, Fade(highlightColor, 0.5f));
     }
 }
+
+void GateRenderer::renderTriangularOrGateShape(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
+    // Create triangular OR gate with curved back edge and triangular front (shape only, no text)
+    Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
+
+    // Use same sizing logic as NOT gate for consistency
+    float triangleHeight = bounds.height;
+    float idealWidth = triangleHeight * 0.876f; // width = height * sqrt(3)/2 for equilateral
+
+    // Use 80% of the available width to prevent text clipping while maintaining good proportions
+    float actualWidth = fminf(bounds.width * 0.8f, idealWidth);
+    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
+
+    // Right point (triangular front)
+    Vector2 rightPoint = {leftX + actualWidth, center.y};
+
+    // Parameters for the curved back edge (similar to traditional OR gate)
+    const int segments = 20;
+    float curveDepth = bounds.height * 0.12f; // Reduced curve depth to provide more text space
+    Vector2 curvePoints[segments + 1];
+
+    // Generate parabolic curve points for the left (back) side
+    for (int i = 0; i <= segments; i++) {
+        float t = (float)i / segments;
+        float y = bounds.y + t * bounds.height;
+
+        // Parabolic curve calculation - maximum curve at center, straight at ends
+        float normalizedT = 2.0f * t - 1.0f; // -1 to 1
+        float curveAmount = 1.0f - normalizedT * normalizedT;
+        float x = leftX + curveDepth * curveAmount;
+
+        curvePoints[i] = {x, y};
+    }
+
+    // Draw shadow using curved points
+    Vector2 shadowOffset = {Config::SHADOW_OFFSET, Config::SHADOW_OFFSET};
+    Vector2 shadowCurvePoints[segments + 1];
+    for (int i = 0; i <= segments; i++) {
+        shadowCurvePoints[i] = {
+            curvePoints[i].x + shadowOffset.x,
+            curvePoints[i].y + shadowOffset.y
+        };
+    }
+    Vector2 shadowRightPoint = {rightPoint.x + shadowOffset.x, rightPoint.y + shadowOffset.y};
+
+    // Draw shadow triangles
+    for (int i = 0; i < segments; i++) {
+        DrawTriangle(shadowCurvePoints[i], shadowCurvePoints[i+1], shadowRightPoint, Config::Colors::GATE_SHADOW);
+    }
+
+    // Draw filled triangles to create the OR gate shape with curved back
+    for (int i = 0; i < segments; i++) {
+        DrawTriangle(curvePoints[i], curvePoints[i+1], rightPoint, fillColor);
+    }
+
+    // Draw the curved back edge outline
+    for (int i = 0; i < segments; i++) {
+        DrawLineEx(curvePoints[i], curvePoints[i+1], outlineThickness, outlineColor);
+    }
+
+    // Draw the straight lines from curve endpoints to the right point (triangular front)
+    DrawLineEx(curvePoints[0], rightPoint, outlineThickness, outlineColor);
+    DrawLineEx(curvePoints[segments], rightPoint, outlineThickness, outlineColor);
+}
+
+void GateRenderer::renderTriangularOrGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
+    // Draw the OR gate shape
+    renderTriangularOrGateShape(bounds, fillColor, outlineColor, outlineThickness);
+
+    // Draw gate label centered at 50% from left edge for better positioning in triangular shape
+    Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
+    float triangleHeight = bounds.height;
+    float idealWidth = triangleHeight * 0.876f;
+    float actualWidth = fminf(bounds.width * 0.8f, idealWidth);
+    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
+
+    const char* label = "OR";
+    float fontSize = Config::GATE_LABEL_FONT_SIZE * 0.9f; // Slightly smaller font for better fit
+    Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
+    float centerX = leftX + actualWidth * 0.5f;
+    Vector2 textPos = {
+        centerX - textSize.x / 2.0f,
+        center.y - textSize.y / 2.0f
+    };
+    VisualEffects::drawTextWithShadow(label, textPos, fontSize,
+                                    Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
+                                    {1.0f, 1.0f});
+}
+
+void GateRenderer::renderTriangularXorGateShape(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
+    // Create triangular XOR gate with curved back edge and double line (shape only, no text)
+    Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
+
+    // Use same sizing logic as NOT gate for consistency
+    float triangleHeight = bounds.height;
+    float idealWidth = triangleHeight * 0.976f; // width = height * sqrt(3)/2 for equilateral
+
+    // Use 80% of the available width to prevent text clipping while maintaining good proportions
+    float actualWidth = fminf(bounds.width * 0.8f, idealWidth);
+    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
+
+    // Right point (triangular front)
+    Vector2 rightPoint = {leftX + actualWidth, center.y};
+
+    // Parameters for the curved back edge (similar to traditional OR gate)
+    const int segments = 20;
+    float curveDepth = bounds.height * 0.12f; // Reduced curve depth to provide more text space
+    Vector2 curvePoints[segments + 1];
+
+    // Generate parabolic curve points for the left (back) side
+    for (int i = 0; i <= segments; i++) {
+        float t = (float)i / segments;
+        float y = bounds.y + t * bounds.height;
+
+        // Parabolic curve calculation - maximum curve at center, straight at ends
+        float normalizedT = 2.0f * t - 1.0f; // -1 to 1
+        float curveAmount = 1.0f - normalizedT * normalizedT;
+        float x = leftX + curveDepth * curveAmount;
+
+        curvePoints[i] = {x, y};
+    }
+
+    // Draw shadow using curved points
+    Vector2 shadowOffset = {Config::SHADOW_OFFSET, Config::SHADOW_OFFSET};
+    Vector2 shadowCurvePoints[segments + 1];
+    for (int i = 0; i <= segments; i++) {
+        shadowCurvePoints[i] = {
+            curvePoints[i].x + shadowOffset.x,
+            curvePoints[i].y + shadowOffset.y
+        };
+    }
+    Vector2 shadowRightPoint = {rightPoint.x + shadowOffset.x, rightPoint.y + shadowOffset.y};
+
+    // Draw shadow triangles
+    for (int i = 0; i < segments; i++) {
+        DrawTriangle(shadowCurvePoints[i], shadowCurvePoints[i+1], shadowRightPoint, Config::Colors::GATE_SHADOW);
+    }
+
+    // Draw filled triangles to create the XOR gate shape with curved back
+    for (int i = 0; i < segments; i++) {
+        DrawTriangle(curvePoints[i], curvePoints[i+1], rightPoint, fillColor);
+    }
+
+    // Draw the curved back edge outline
+    for (int i = 0; i < segments; i++) {
+        DrawLineEx(curvePoints[i], curvePoints[i+1], outlineThickness, outlineColor);
+    }
+
+    // Draw the straight lines from curve endpoints to the right point (triangular front)
+    DrawLineEx(curvePoints[0], rightPoint, outlineThickness, outlineColor);
+    DrawLineEx(curvePoints[segments], rightPoint, outlineThickness, outlineColor);
+
+    // Draw XOR double line on the left side (offset from the curved back)
+    float lineOffset = 4.0f;
+    Vector2 secondCurvePoints[segments + 1];
+
+    // Generate second curve points for XOR double line
+    for (int i = 0; i <= segments; i++) {
+        float t = (float)i / segments;
+        float y = bounds.y + t * bounds.height;
+
+        // Same parabolic curve calculation but offset to the left
+        float normalizedT = 2.0f * t - 1.0f; // -1 to 1
+        float curveAmount = 1.0f - normalizedT * normalizedT;
+        float x = (leftX - lineOffset) + curveDepth * curveAmount;
+
+        secondCurvePoints[i] = {x, y};
+    }
+
+    // Draw the second curved line for XOR
+    for (int i = 0; i < segments; i++) {
+        DrawLineEx(secondCurvePoints[i], secondCurvePoints[i+1], outlineThickness, outlineColor);
+    }
+}
+
+void GateRenderer::renderTriangularXorGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
+    // Draw the XOR gate shape
+    renderTriangularXorGateShape(bounds, fillColor, outlineColor, outlineThickness);
+
+    // Draw gate label centered at 50% from left edge for better positioning in triangular shape
+    Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
+    float triangleHeight = bounds.height;
+    float idealWidth = triangleHeight * 0.866f;
+    float actualWidth = fminf(bounds.width * 0.8f, idealWidth);
+    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
+
+    const char* label = "XOR";
+    float fontSize = Config::GATE_LABEL_FONT_SIZE * 0.9f; // Slightly smaller font for better fit
+    Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
+    float centerX = leftX + actualWidth * 0.5f;
+    Vector2 textPos = {
+        centerX - textSize.x / 2.0f,
+        center.y - textSize.y / 2.0f
+    };
+    VisualEffects::drawTextWithShadow(label, textPos, fontSize,
+                                    Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
+                                    {1.0f, 1.0f});
+}
+
+void GateRenderer::renderEnhancedGateSymbol(Rectangle bounds, Color fillColor, Color fillColorLight,
+                                          Color outlineColor, float outlineThickness, float pulseValue,
+                                          bool isSelected, const char* gateType) const {
+    // Selection outline removed - only inner outline remains
+
+    // Draw specific gate shape based on type (no background rectangle)
+    if (strcmp(gateType, "AND") == 0) {
+        renderAndGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+    } else if (strcmp(gateType, "OR") == 0) {
+        renderTriangularOrGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+    } else if (strcmp(gateType, "XOR") == 0) {
+        renderTriangularXorGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+    } else if (strcmp(gateType, "NOT") == 0) {
+        renderNotGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
+    } else {
+        // Fallback to rounded rectangle
+        DrawRectangleRounded(bounds, 0.2f, 8, fillColor);
+        DrawRectangleRoundedLines(bounds, 0.2f, 8, outlineColor);
+
+        // Draw enhanced text
+        Vector2 textSize = MeasureTextEx(GetFontDefault(), gateType, Config::GATE_LABEL_FONT_SIZE, 1.0f);
+        Vector2 textPos = {
+            bounds.x + (bounds.width - textSize.x) / 2.0f,
+            bounds.y + (bounds.height - textSize.y) / 2.0f
+        };
+        VisualEffects::drawTextWithShadow(gateType, textPos, Config::GATE_LABEL_FONT_SIZE,
+                                        Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
+                                        {1.0f, 1.0f});
+    }
+}
+
+
