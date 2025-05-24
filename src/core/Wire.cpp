@@ -175,11 +175,7 @@ void Wire::drawEnhancedWirePath(const std::vector<Vector2>& points, Color color,
 
         if (distance > 30.0f) {
             bool isActive = state_ && !isSelected;
-            float t = 0.8f;
-            if (isActive) {
-                float pulseValue = VisualEffects::getPulseValue(4.0f);
-                t = 0.75f + pulseValue * 0.1f;
-            }
+            float t = 0.5f;  // Static position at 50% along the wire segment
 
             Vector2 arrowPos = {
                 lastSegmentStart.x + t * (lastSegmentEnd.x - lastSegmentStart.x),

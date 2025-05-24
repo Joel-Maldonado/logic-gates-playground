@@ -9,8 +9,7 @@
 #include <string>
 #include <cmath>
 
-GateRenderer::GateRenderer() {
-}
+GateRenderer::GateRenderer() {}
 
 void GateRenderer::renderGates(const std::vector<std::unique_ptr<LogicGate>>& gates, const Camera2D& camera) {
     for (const auto& gate : gates) {
