@@ -9,98 +9,98 @@
 #include <set>
 
 LogicGate::LogicGate(std::string gateId, Vector2 pos, float w, float h)
-    : id(std::move(gateId)), position(pos), width(w), height(h), isDirty(true), isSelected(false) {
+    : id_(std::move(gateId)), position_(pos), width_(w), height_(h), isDirty_(true), isSelected_(false) {
 }
 
 LogicGate::~LogicGate() {
 }
 
 void LogicGate::update() {
-    if (isDirty) {
+    if (isDirty_) {
         evaluate();
-        isDirty = false;
+        isDirty_ = false;
     }
 }
 
 void LogicGate::markDirty() {
-    if (!isDirty) {
-        isDirty = true;  // Mark for re-evaluation on next update cycle
+    if (!isDirty_) {
+        isDirty_ = true;
     }
 }
 
 bool LogicGate::needsEvaluation() const {
-    return isDirty;
+    return isDirty_;
 }
 
 void LogicGate::initializeInputPin(int pinId, Vector2 relativeOffset) {
-    inputPins.emplace_back(this, PinType::INPUT_PIN, pinId, relativeOffset);
+    inputPins_.emplace_back(this, PinType::INPUT_PIN, pinId, relativeOffset);
 }
 
 void LogicGate::initializeOutputPin(int pinId, Vector2 relativeOffset) {
-    outputPins.emplace_back(this, PinType::OUTPUT_PIN, pinId, relativeOffset);
+    outputPins_.emplace_back(this, PinType::OUTPUT_PIN, pinId, relativeOffset);
 }
 
 GatePin* LogicGate::getInputPin(size_t pinIndex) {
-    if (pinIndex >= inputPins.size()) {
-        throw std::out_of_range("Input pin index out of range for gate " + id);
+    if (pinIndex >= inputPins_.size()) {
+        throw std::out_of_range("Input pin index out of range for gate " + id_);
     }
-    return &inputPins[pinIndex];
+    return &inputPins_[pinIndex];
 }
 
 const GatePin* LogicGate::getInputPin(size_t pinIndex) const {
-    if (pinIndex >= inputPins.size()) {
-        throw std::out_of_range("Input pin index out of range for gate " + id);
+    if (pinIndex >= inputPins_.size()) {
+        throw std::out_of_range("Input pin index out of range for gate " + id_);
     }
-    return &inputPins[pinIndex];
+    return &inputPins_[pinIndex];
 }
 
 GatePin* LogicGate::getOutputPin(size_t pinIndex) {
-    if (pinIndex >= outputPins.size()) {
-        throw std::out_of_range("Output pin index out of range for gate " + id);
+    if (pinIndex >= outputPins_.size()) {
+        throw std::out_of_range("Output pin index out of range for gate " + id_);
     }
-    return &outputPins[pinIndex];
+    return &outputPins_[pinIndex];
 }
 
 const GatePin* LogicGate::getOutputPin(size_t pinIndex) const {
-    if (pinIndex >= outputPins.size()) {
-        throw std::out_of_range("Output pin index out of range for gate " + id);
+    if (pinIndex >= outputPins_.size()) {
+        throw std::out_of_range("Output pin index out of range for gate " + id_);
     }
-    return &outputPins[pinIndex];
+    return &outputPins_[pinIndex];
 }
 
 size_t LogicGate::getInputPinCount() const {
-    return inputPins.size();
+    return inputPins_.size();
 }
 
 size_t LogicGate::getOutputPinCount() const {
-    return outputPins.size();
+    return outputPins_.size();
 }
 
 void LogicGate::setInputState(size_t pinIndex, bool state) {
-    if (pinIndex >= inputPins.size()) {
-        throw std::out_of_range("Input pin index out of range for gate " + id);
+    if (pinIndex >= inputPins_.size()) {
+        throw std::out_of_range("Input pin index out of range for gate " + id_);
     }
-    inputPins[pinIndex].setState(state);
+    inputPins_[pinIndex].setState(state);
     markDirty();
 }
 
 bool LogicGate::getOutputState(size_t pinIndex) const {
-    if (pinIndex >= outputPins.size()) {
-        throw std::out_of_range("Output pin index out of range for gate " + id);
+    if (pinIndex >= outputPins_.size()) {
+        throw std::out_of_range("Output pin index out of range for gate " + id_);
     }
-    return outputPins[pinIndex].getState();
+    return outputPins_[pinIndex].getState();
 }
 
 void LogicGate::setPosition(Vector2 newPosition) {
-    position = newPosition;
+    position_ = newPosition;
 }
 
 Vector2 LogicGate::getPosition() const {
-    return position;
+    return position_;
 }
 
 Rectangle LogicGate::getBounds() const {
-    return { position.x, position.y, width, height };
+    return { position_.x, position_.y, width_, height_ };
 }
 
 bool LogicGate::isMouseOver(Vector2 mousePos) const {
@@ -108,12 +108,12 @@ bool LogicGate::isMouseOver(Vector2 mousePos) const {
 }
 
 GatePin* LogicGate::getPinAt(Vector2 mousePos, float tolerance) {
-    for (GatePin& pin : inputPins) {
+    for (GatePin& pin : inputPins_) {
         if (Vector2Distance(mousePos, pin.getAbsolutePosition()) <= pin.getClickRadius() + tolerance) {
             return &pin;
         }
     }
-    for (GatePin& pin : outputPins) {
+    for (GatePin& pin : outputPins_) {
         if (Vector2Distance(mousePos, pin.getAbsolutePosition()) <= pin.getClickRadius() + tolerance) {
             return &pin;
         }
@@ -122,37 +122,37 @@ GatePin* LogicGate::getPinAt(Vector2 mousePos, float tolerance) {
 }
 
 void LogicGate::setSelected(bool selected) {
-    isSelected = selected;
+    isSelected_ = selected;
 }
 
 bool LogicGate::getIsSelected() const {
-    return isSelected;
+    return isSelected_;
 }
 
 std::string LogicGate::getId() const {
-    return id;
+    return id_;
 }
 
 float LogicGate::getWidth() const {
-    return width;
+    return width_;
 }
 
 float LogicGate::getHeight() const {
-    return height;
+    return height_;
 }
 
 void LogicGate::addWire(Wire* wire) {
-    if (wire && std::find(associatedWires.begin(), associatedWires.end(), wire) == associatedWires.end()) {
-        associatedWires.push_back(wire);
+    if (wire && std::find(associatedWires_.begin(), associatedWires_.end(), wire) == associatedWires_.end()) {
+        associatedWires_.push_back(wire);
     }
 }
 
 void LogicGate::removeWire(Wire* wire) {
-    associatedWires.erase(std::remove(associatedWires.begin(), associatedWires.end(), wire), associatedWires.end());
+    associatedWires_.erase(std::remove(associatedWires_.begin(), associatedWires_.end(), wire), associatedWires_.end());
 }
 
 const std::vector<Wire*>& LogicGate::getAssociatedWires() const {
-    return associatedWires;
+    return associatedWires_;
 }
 
 std::vector<Wire*> LogicGate::prepareForDeletion() {
@@ -161,7 +161,7 @@ std::vector<Wire*> LogicGate::prepareForDeletion() {
     for (GatePin& inputPin : getAllInputPins()) {
         if (inputPin.getSourceOutputPin() != nullptr) {
             Wire* connectedWire = nullptr;
-            for (Wire* w : associatedWires) {
+            for (Wire* w : associatedWires_) {
                 if (w->getDestPin() == &inputPin && w->getSourcePin() == inputPin.getSourceOutputPin()) {
                     connectedWire = w;
                     break;
@@ -182,7 +182,7 @@ std::vector<Wire*> LogicGate::prepareForDeletion() {
 
     for (GatePin& outputPin : getAllOutputPins()) {
         std::vector<Wire*> wiresFromThisOutputPin;
-        for (Wire* w : associatedWires) {
+        for (Wire* w : associatedWires_) {
             if (w->getSourcePin() == &outputPin) {
                 wiresFromThisOutputPin.push_back(w);
             }
@@ -199,6 +199,6 @@ std::vector<Wire*> LogicGate::prepareForDeletion() {
         }
     }
 
-    associatedWires.clear();
+    associatedWires_.clear();
     return std::vector<Wire*>(uniqueAffectedWiresSet.begin(), uniqueAffectedWiresSet.end());
 }

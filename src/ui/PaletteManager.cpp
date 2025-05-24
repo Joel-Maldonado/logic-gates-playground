@@ -7,9 +7,9 @@
 #include <utility>
 
 PaletteManager::PaletteManager(std::shared_ptr<CircuitSimulator> sim)
-    : selectedGateType(GateType::NONE), simulator(sim),
-      isDraggingGate(false), draggedGateType(GateType::NONE),
-      dragStartPos({0, 0}), currentDragPos({0, 0}) {
+    : selectedGateType_(GateType::NONE), simulator_(sim),
+      isDraggingGate_(false), draggedGateType_(GateType::NONE),
+      dragStartPos_({0, 0}), currentDragPos_({0, 0}) {
 }
 
 void PaletteManager::initialize() {
@@ -20,7 +20,7 @@ void PaletteManager::initialize() {
     };
 
     for (GateType type : types) {
-        gatePalette.push_back({
+        gatePalette_.push_back({
             {
                 Config::CANVAS_PADDING,
                 currentY,
@@ -58,9 +58,9 @@ void PaletteManager::render(const Camera2D& camera) {
     Vector2 mousePos = GetMousePosition();
 
     // Draw palette items with enhanced styling
-    for (const auto& item : gatePalette) {
+    for (const auto& item : gatePalette_) {
         bool isHovered = CheckCollisionPointRec(mousePos, item.bounds);
-        bool isSelected = (selectedGateType == item.type);
+        bool isSelected = (selectedGateType_ == item.type);
 
         Color bgColor;
         if (isSelected) {
@@ -120,9 +120,9 @@ void PaletteManager::render(const Camera2D& camera) {
     DrawText("Backspace: Remove", 10, GetScreenHeight() - 30, 18, LIGHTGRAY);
 
     // Draw gate preview if dragging
-    if (isDraggingGate && draggedGateType != GateType::NONE) {
+    if (isDraggingGate_ && draggedGateType_ != GateType::NONE) {
         // Get the world position for the mouse
-        Vector2 worldPos = GetScreenToWorld2D(currentDragPos, camera);
+        Vector2 worldPos = GetScreenToWorld2D(currentDragPos_, camera);
 
         // Convert back to screen coordinates for drawing
         Vector2 screenPos = GetWorldToScreen2D(worldPos, camera);
@@ -135,10 +135,10 @@ void PaletteManager::render(const Camera2D& camera) {
             Config::DRAG_PREVIEW_SIZE
         };
 
-        Color previewColor = getGateColor(draggedGateType);
+        Color previewColor = getGateColor(draggedGateType_);
         previewColor.a = static_cast<unsigned char>(255 * Config::DRAG_PREVIEW_ALPHA);
 
-        drawGateIcon(draggedGateType, previewBounds, previewColor);
+        drawGateIcon(draggedGateType_, previewBounds, previewColor);
 
         // Draw a "+" symbol to indicate placement
         DrawText("+", screenPos.x - 5, screenPos.y - 10, 22, WHITE);
@@ -152,11 +152,11 @@ bool PaletteManager::handleClick(Vector2 mousePos) {
         return false;
     }
 
-    for (const auto& item : gatePalette) {
+    for (const auto& item : gatePalette_) {
         if (CheckCollisionPointRec(mousePos, item.bounds)) {
             // Instead of just selecting, we'll highlight it but not set as selected
             // This allows us to distinguish between selection and dragging
-            selectedGateType = item.type;
+            selectedGateType_ = item.type;
             return true;
         }
     }
@@ -165,15 +165,15 @@ bool PaletteManager::handleClick(Vector2 mousePos) {
 }
 
 std::unique_ptr<LogicGate> PaletteManager::createSelectedGateInstance(Vector2 position) {
-    return createGateInstance(selectedGateType, position);
+    return createGateInstance(selectedGateType_, position);
 }
 
 GateType PaletteManager::getSelectedGateType() const {
-    return selectedGateType;
+    return selectedGateType_;
 }
 
 void PaletteManager::setSelectedGateType(GateType type) {
-    selectedGateType = type;
+    selectedGateType_ = type;
 }
 
 std::string PaletteManager::getGateTypeName(GateType type) {
@@ -204,12 +204,12 @@ bool PaletteManager::startDraggingGate(Vector2 mousePos) {
         return false;
     }
 
-    for (const auto& item : gatePalette) {
+    for (const auto& item : gatePalette_) {
         if (CheckCollisionPointRec(mousePos, item.bounds)) {
-            isDraggingGate = true;
-            draggedGateType = item.type;
-            dragStartPos = mousePos;
-            currentDragPos = mousePos;
+            isDraggingGate_ = true;
+            draggedGateType_ = item.type;
+            dragStartPos_ = mousePos;
+            currentDragPos_ = mousePos;
             return true;
         }
     }
@@ -218,46 +218,46 @@ bool PaletteManager::startDraggingGate(Vector2 mousePos) {
 }
 
 void PaletteManager::updateDragPosition(Vector2 mousePos) {
-    if (isDraggingGate) {
-        currentDragPos = mousePos;
+    if (isDraggingGate_) {
+        currentDragPos_ = mousePos;
     }
 }
 
 LogicGate* PaletteManager::endDraggingGate(Vector2 worldPos) {
-    if (!isDraggingGate || draggedGateType == GateType::NONE) {
+    if (!isDraggingGate_ || draggedGateType_ == GateType::NONE) {
         return nullptr;
     }
 
     // Create the gate at the world position
-    auto newGate = createGateInstance(draggedGateType, worldPos);
+    auto newGate = createGateInstance(draggedGateType_, worldPos);
     LogicGate* rawPtr = nullptr;
 
     if (newGate) {
-        rawPtr = simulator->addGate(std::move(newGate));
+        rawPtr = simulator_->addGate(std::move(newGate));
     }
 
     // Reset dragging state
-    isDraggingGate = false;
-    draggedGateType = GateType::NONE;
+    isDraggingGate_ = false;
+    draggedGateType_ = GateType::NONE;
 
     return rawPtr;
 }
 
 void PaletteManager::cancelDraggingGate() {
-    isDraggingGate = false;
-    draggedGateType = GateType::NONE;
+    isDraggingGate_ = false;
+    draggedGateType_ = GateType::NONE;
 }
 
 bool PaletteManager::isDraggingGateActive() const {
-    return isDraggingGate;
+    return isDraggingGate_;
 }
 
 GateType PaletteManager::getDraggedGateType() const {
-    return draggedGateType;
+    return draggedGateType_;
 }
 
 Vector2 PaletteManager::getCurrentDragPosition() const {
-    return currentDragPos;
+    return currentDragPos_;
 }
 
 
@@ -268,7 +268,7 @@ std::unique_ptr<LogicGate> PaletteManager::createGateInstance(GateType type, Vec
         return nullptr;
     }
 
-    std::string idStr = "gate" + std::to_string(simulator->useNextGateId());
+    std::string idStr = "gate" + std::to_string(simulator_->useNextGateId());
 
     switch (type) {
         case GateType::INPUT_SOURCE:

@@ -36,15 +36,15 @@ struct PaletteItem {
  */
 class PaletteManager {
 private:
-    std::vector<PaletteItem> gatePalette;
-    GateType selectedGateType;
-    std::shared_ptr<CircuitSimulator> simulator;
+    std::vector<PaletteItem> gatePalette_;
+    GateType selectedGateType_;
+    std::shared_ptr<CircuitSimulator> simulator_;
 
     // Drag and drop state
-    bool isDraggingGate;
-    GateType draggedGateType;
-    Vector2 dragStartPos;
-    Vector2 currentDragPos;
+    bool isDraggingGate_;
+    GateType draggedGateType_;
+    Vector2 dragStartPos_;
+    Vector2 currentDragPos_;
 
     Color getGateColor(GateType type) const;
     void drawGateIcon(GateType type, Rectangle bounds, Color color) const;

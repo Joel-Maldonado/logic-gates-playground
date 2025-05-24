@@ -7,11 +7,16 @@
 class LogicGate;
 class Wire;
 
+/** Enumeration for pin types */
 enum class PinType {
     INPUT_PIN,
     OUTPUT_PIN
 };
 
+/**
+ * Represents a connection point on a logic gate.
+ * Handles input/output connections and state management.
+ */
 class GatePin {
 private:
     LogicGate* parentGate_;
@@ -26,8 +31,16 @@ private:
     bool currentState_;
 
 public:
+    /**
+     * Constructs a gate pin.
+     * @param parent The parent logic gate
+     * @param pinType Type of pin (input or output)
+     * @param id Unique identifier within the gate
+     * @param offset Position relative to gate origin
+     */
     GatePin(LogicGate* parent, PinType pinType, int id, Vector2 offset);
 
+    // Property getters
     LogicGate* getParentGate() const;
     PinType getType() const;
     int getId() const;
@@ -38,18 +51,22 @@ public:
     const GatePin* getSourceOutputPin() const;
     const std::vector<GatePin*>& getDependentInputPins() const;
 
+    // State management
     bool getState() const;
     void setState(bool newState);
 
+    // UI state management
     void setHovered(bool hovered);
     void setSelected(bool selected);
 
+    // Connection management
     void connectTo(GatePin* outputPin);
     void disconnectSource();
     void addDependentPin(GatePin* inputPin);
     void removeDependentPin(GatePin* inputPin);
     void disconnectWire(Wire* wireToDisconnect);
 
+    // Utility methods
     Vector2 getAbsolutePosition() const;
     bool isConnectedInput() const;
     bool hasConnectedOutputDependents() const;

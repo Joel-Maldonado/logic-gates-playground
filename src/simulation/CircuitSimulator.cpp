@@ -2,21 +2,21 @@
 #include <algorithm>
 #include <iostream>
 
-CircuitSimulator::CircuitSimulator() : nextGateId(0) {
+CircuitSimulator::CircuitSimulator() : nextGateId_(0) {
 }
 
 void CircuitSimulator::update() {
     // Update wire states first to propagate signals
-    for (const auto& wire : wires) {
+    for (const auto& wire : wires_) {
         wire->update();
     }
 
     // Update gates twice to handle multi-level logic propagation
-    for (const auto& gate : gates) {
+    for (const auto& gate : gates_) {
         gate->update();
     }
 
-    for (const auto& gate : gates) {
+    for (const auto& gate : gates_) {
         gate->update();
     }
 }
@@ -27,7 +27,7 @@ LogicGate* CircuitSimulator::addGate(std::unique_ptr<LogicGate> gate) {
     }
 
     LogicGate* rawPtr = gate.get();
-    gates.push_back(std::move(gate));
+    gates_.push_back(std::move(gate));
     return rawPtr;
 }
 
@@ -39,7 +39,7 @@ Wire* CircuitSimulator::createWire(GatePin* sourcePin, GatePin* destPin) {
     try {
         auto wire = std::make_unique<Wire>(sourcePin, destPin);
         Wire* rawPtr = wire.get();
-        wires.push_back(std::move(wire));
+        wires_.push_back(std::move(wire));
         return rawPtr;
     } catch (const std::exception& e) {
         return nullptr;
@@ -59,13 +59,13 @@ bool CircuitSimulator::removeGate(LogicGate* gate) {
     }
 
     // Find and remove the gate from the collection
-    auto it = std::find_if(gates.begin(), gates.end(),
+    auto it = std::find_if(gates_.begin(), gates_.end(),
         [gate](const std::unique_ptr<LogicGate>& ptr) {
             return ptr.get() == gate;
         });
 
-    if (it != gates.end()) {
-        gates.erase(it);
+    if (it != gates_.end()) {
+        gates_.erase(it);
         return true;
     }
 
@@ -88,13 +88,13 @@ bool CircuitSimulator::removeWire(Wire* wire) {
         wire->getDestPin()->getParentGate()->removeWire(wire);
     }
 
-    auto it = std::find_if(wires.begin(), wires.end(),
+    auto it = std::find_if(wires_.begin(), wires_.end(),
         [wire](const std::unique_ptr<Wire>& ptr) {
             return ptr.get() == wire;
         });
 
-    if (it != wires.end()) {
-        wires.erase(it);
+    if (it != wires_.end()) {
+        wires_.erase(it);
         return true;
     }
 
@@ -102,23 +102,23 @@ bool CircuitSimulator::removeWire(Wire* wire) {
 }
 
 const std::vector<std::unique_ptr<LogicGate>>& CircuitSimulator::getGates() const {
-    return gates;
+    return gates_;
 }
 
 const std::vector<std::unique_ptr<Wire>>& CircuitSimulator::getWires() const {
-    return wires;
+    return wires_;
 }
 
 int CircuitSimulator::getNextGateId() const {
-    return nextGateId;
+    return nextGateId_;
 }
 
 int CircuitSimulator::useNextGateId() {
-    return nextGateId++;
+    return nextGateId_++;
 }
 
 void CircuitSimulator::clear() {
-    wires.clear();
-    gates.clear();
-    nextGateId = 0;
+    wires_.clear();
+    gates_.clear();
+    nextGateId_ = 0;
 }

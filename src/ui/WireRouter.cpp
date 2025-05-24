@@ -18,8 +18,7 @@ std::vector<Vector2> WireRouter::calculatePath(Vector2 startPos, Vector2 endPos,
     }
 
     // Add small horizontal offset from output pin for cleaner routing
-    const float horizontalOffset = 10.0f;
-    Vector2 initialHorizontalPoint = { startPos.x + horizontalOffset, startPos.y };
+    Vector2 initialHorizontalPoint = { startPos.x + Config::WIRE_HORIZONTAL_OFFSET, startPos.y };
     path.push_back(initialHorizontalPoint);
 
     if (isDestInput) {

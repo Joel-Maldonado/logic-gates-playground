@@ -1,20 +1,18 @@
 #include "core/OutputSink.h"
+#include "app/Config.h"
 #include <raylib.h>
 #include <utility>
 
 namespace {
-    constexpr float CONNECTOR_RADIUS = 5.0f;
-    constexpr float LABEL_FONT_SIZE = 14.0f;
-    constexpr float LABEL_SPACING = 3.0f;
     constexpr Color SELECTION_COLOR = YELLOW;
 }
 
 OutputSink::OutputSink(std::string id, Vector2 pos, float visualRadius, std::string visualLabel)
     : LogicGate(std::move(id), pos, visualRadius * 2, visualRadius * 2),
-      radius(visualRadius),
-      label(std::move(visualLabel)),
-      active(false),
-      style() {
+      radius_(visualRadius),
+      label_(std::move(visualLabel)),
+      active_(false),
+      style_() {
     initializeInputPin(0, {0, visualRadius});
     markDirty();
 }
@@ -24,37 +22,38 @@ OutputSink::~OutputSink() = default;
 void OutputSink::evaluate() {
     if (getInputPinCount() > 0) {
         bool newState = getInputPin(0)->getState();
-        if (active != newState) {
-            active = newState;
+        if (active_ != newState) {
+            active_ = newState;
         }
-    } else if (active) {
-        active = false;
+    } else if (active_) {
+        active_ = false;
     }
 }
 
 void OutputSink::draw() {
     Rectangle bounds = getBounds();
-    Vector2 center = { bounds.x + radius, bounds.y + radius };
+    Vector2 center = { bounds.x + radius_, bounds.y + radius_ };
 
     // Draw main body
-    DrawCircleV(center, radius, active ? style.fillOn : style.fillOff);
+    DrawCircleV(center, radius_, active_ ? style_.fillOn : style_.fillOff);
 
     // Draw outline (thicker if selected)
     if (getIsSelected()) {
-        DrawCircleLines(center.x, center.y, radius, SELECTION_COLOR);
-        DrawCircleLines(center.x, center.y, radius + 2.0f, SELECTION_COLOR);
+        DrawCircleLines(center.x, center.y, radius_, SELECTION_COLOR);
+        DrawCircleLines(center.x, center.y, radius_ + Config::GATE_OUTLINE_THICKNESS, SELECTION_COLOR);
     } else {
-        DrawCircleLines(center.x, center.y, radius, style.outlineColor);
+        DrawCircleLines(center.x, center.y, radius_, style_.outlineColor);
     }
 
     // Draw label if present
-    if (!label.empty()) {
-        Vector2 textSize = MeasureTextEx(GetFontDefault(), label.c_str(), LABEL_FONT_SIZE, 1.0f);
+    if (!label_.empty()) {
+        const float labelFontSize = Config::LABEL_FONT_SIZE;
+        Vector2 textSize = MeasureTextEx(GetFontDefault(), label_.c_str(), labelFontSize, 1.0f);
         Vector2 textPos = {
             center.x - textSize.x / 2.0f,
-            bounds.y - textSize.y - LABEL_SPACING
+            bounds.y - textSize.y - Config::LABEL_SPACING
         };
-        DrawTextEx(GetFontDefault(), label.c_str(), textPos, LABEL_FONT_SIZE, 1.0f, style.textColor);
+        DrawTextEx(GetFontDefault(), label_.c_str(), textPos, labelFontSize, 1.0f, style_.textColor);
     }
 
     // Draw input pin
@@ -62,12 +61,12 @@ void OutputSink::draw() {
         const GatePin* pin = getInputPin(0);
         if (pin) {
             Vector2 pinPos = pin->getAbsolutePosition();
-            DrawCircleV(pinPos, CONNECTOR_RADIUS, active ? style.fillOn : style.fillOff);
-            DrawCircleLines(pinPos.x, pinPos.y, CONNECTOR_RADIUS, style.outlineColor);
+            DrawCircleV(pinPos, Config::CONNECTOR_PIN_RADIUS, active_ ? style_.fillOn : style_.fillOff);
+            DrawCircleLines(pinPos.x, pinPos.y, Config::CONNECTOR_PIN_RADIUS, style_.outlineColor);
         }
     }
 }
 
 bool OutputSink::isActive() const {
-    return active;
+    return active_;
 }

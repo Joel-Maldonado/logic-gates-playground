@@ -42,14 +42,14 @@ void GateRenderer::renderPinHighlights(const LogicGate* gate, Vector2 mousePos, 
     for (size_t i = 0; i < gate->getInputPinCount(); i++) {
         const GatePin* pin = gate->getInputPin(i);
         if (pin && pin->isMouseOverPin(mousePos)) {
-            DrawCircleV(pin->getAbsolutePosition(), pin->getClickRadius() + 2.0f, Fade(Config::Colors::PIN_HOVER, 0.5f));
+            DrawCircleV(pin->getAbsolutePosition(), pin->getClickRadius() + Config::PIN_HOVER_TOLERANCE, Fade(Config::Colors::PIN_HOVER, 0.5f));
         }
     }
 
     for (size_t i = 0; i < gate->getOutputPinCount(); i++) {
         const GatePin* pin = gate->getOutputPin(i);
         if (pin && pin->isMouseOverPin(mousePos)) {
-            DrawCircleV(pin->getAbsolutePosition(), pin->getClickRadius() + 2.0f, Fade(Config::Colors::PIN_HOVER, 0.5f));
+            DrawCircleV(pin->getAbsolutePosition(), pin->getClickRadius() + Config::PIN_HOVER_TOLERANCE, Fade(Config::Colors::PIN_HOVER, 0.5f));
         }
     }
 }
@@ -303,13 +303,13 @@ void GateRenderer::renderPin(const GatePin* pin, bool showLabel) const {
 
 void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
     // AND gate: rectangle on left, semicircle on right
-    float actualWidth = bounds.width * 0.85f;
+    float actualWidth = bounds.width * Config::GATE_WIDTH_RATIO;
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
 
     Vector2 center = {leftX + actualWidth / 2.0f, bounds.y + bounds.height / 2.0f};
     float radius = bounds.height / 2.0f;
     float flatPartWidth = actualWidth - radius;  // Width of rectangular portion
-    int segments = 20;  // Smoothness of semicircle
+    int segments = Config::GATE_CURVE_SEGMENTS;  // Smoothness of semicircle
 
     Vector2 shadowOffset = {Config::SHADOW_OFFSET, Config::SHADOW_OFFSET};
     Rectangle shadowRectPart = {
@@ -382,13 +382,13 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
 void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
     Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
 
-    float actualWidth = bounds.width * 0.8f;
+    float actualWidth = bounds.width * Config::GATE_OR_WIDTH_RATIO;
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
     float rightX = leftX + actualWidth;
     Vector2 rightPoint = {rightX, center.y};
 
-    const int segments = 20;
-    float curveDepth = bounds.height * 0.15f;
+    const int segments = Config::GATE_CURVE_SEGMENTS;
+    float curveDepth = bounds.height * Config::GATE_CURVE_DEPTH_RATIO;
     Vector2 curvePoints[segments + 1];
 
     // Generate parabolic curve points for the left (back) side
@@ -429,12 +429,12 @@ void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color o
 void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
     renderOrGateSymbol(bounds, fillColor, outlineColor, outlineThickness);
 
-    float actualWidth = bounds.width * 0.8f;
+    float actualWidth = bounds.width * Config::GATE_XOR_WIDTH_RATIO;
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
     float curveOffset = bounds.height * 0.11f;
-    float curveDepth = bounds.height * 0.15f;
+    float curveDepth = bounds.height * Config::GATE_CURVE_DEPTH_RATIO;
 
-    const int segments = 20;
+    const int segments = Config::GATE_CURVE_SEGMENTS;
     Vector2 prevPoint = {leftX - curveOffset, bounds.y};
 
     for (int i = 1; i <= segments; i++) {
@@ -468,10 +468,10 @@ void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color 
 
     // Calculate triangle dimensions for proper proportions
     float triangleHeight = bounds.height;
-    float idealWidth = triangleHeight * 0.866f; // width = height * sqrt(3)/2 for equilateral triangle
+    float idealWidth = triangleHeight * Config::GATE_TRIANGLE_ASPECT_RATIO; // width = height * sqrt(3)/2 for equilateral triangle
 
-    // Use 70% of available width for compact appearance
-    float actualWidth = fminf(bounds.width * 0.7f, idealWidth);
+    // Use configured width ratio for compact appearance
+    float actualWidth = fminf(bounds.width * Config::GATE_NOT_WIDTH_RATIO, idealWidth);
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
 
     // Define triangle points
@@ -489,7 +489,7 @@ void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color 
 
     // Draw the inversion bubble at triangle tip
     Vector2 circleCenter = points[2]; // Right point of triangle
-    float circleRadius = 5.0f; // Small but visible inversion indicator
+    float circleRadius = Config::INVERSION_BUBBLE_RADIUS; // Small but visible inversion indicator
 
     // Draw filled circle
     DrawCircleV(circleCenter, circleRadius, fillColor);
@@ -547,16 +547,16 @@ void GateRenderer::renderTriangularOrGateShape(Rectangle bounds, Color fillColor
     float triangleHeight = bounds.height;
     float idealWidth = triangleHeight * 0.876f; // width = height * sqrt(3)/2 for equilateral
 
-    // Use 80% of the available width to prevent text clipping while maintaining good proportions
-    float actualWidth = fminf(bounds.width * 0.8f, idealWidth);
+    // Use configured width ratio to prevent text clipping while maintaining good proportions
+    float actualWidth = fminf(bounds.width * Config::GATE_OR_WIDTH_RATIO, idealWidth);
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
 
     // Right point (triangular front)
     Vector2 rightPoint = {leftX + actualWidth, center.y};
 
     // Parameters for the curved back edge (similar to traditional OR gate)
-    const int segments = 20;
-    float curveDepth = bounds.height * 0.12f; // Reduced curve depth to provide more text space
+    const int segments = Config::GATE_CURVE_SEGMENTS;
+    float curveDepth = bounds.height * Config::GATE_XOR_CURVE_DEPTH_RATIO; // Reduced curve depth to provide more text space
     Vector2 curvePoints[segments + 1];
 
     // Generate parabolic curve points for the left (back) side
@@ -615,7 +615,7 @@ void GateRenderer::renderTriangularOrGateSymbol(Rectangle bounds, Color fillColo
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
 
     const char* label = "OR";
-    float fontSize = Config::GATE_LABEL_FONT_SIZE * 0.9f; // Slightly smaller font for better fit
+    float fontSize = Config::GATE_LABEL_FONT_SIZE * Config::GATE_FONT_SIZE_RATIO; // Slightly smaller font for better fit
     Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
     float centerX = leftX + actualWidth * 0.5f;
     Vector2 textPos = {
@@ -635,16 +635,16 @@ void GateRenderer::renderTriangularXorGateShape(Rectangle bounds, Color fillColo
     float triangleHeight = bounds.height;
     float idealWidth = triangleHeight * 0.976f; // width = height * sqrt(3)/2 for equilateral
 
-    // Use 80% of the available width to prevent text clipping while maintaining good proportions
-    float actualWidth = fminf(bounds.width * 0.8f, idealWidth);
+    // Use configured width ratio to prevent text clipping while maintaining good proportions
+    float actualWidth = fminf(bounds.width * Config::GATE_XOR_WIDTH_RATIO, idealWidth);
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
 
     // Right point (triangular front)
     Vector2 rightPoint = {leftX + actualWidth, center.y};
 
     // Parameters for the curved back edge (similar to traditional OR gate)
-    const int segments = 20;
-    float curveDepth = bounds.height * 0.12f; // Reduced curve depth to provide more text space
+    const int segments = Config::GATE_CURVE_SEGMENTS;
+    float curveDepth = bounds.height * Config::GATE_XOR_CURVE_DEPTH_RATIO; // Reduced curve depth to provide more text space
     Vector2 curvePoints[segments + 1];
 
     // Generate parabolic curve points for the left (back) side
@@ -691,7 +691,7 @@ void GateRenderer::renderTriangularXorGateShape(Rectangle bounds, Color fillColo
     DrawLineEx(curvePoints[segments], rightPoint, outlineThickness, outlineColor);
 
     // Draw XOR double line on the left side (offset from the curved back)
-    float lineOffset = 4.0f;
+    float lineOffset = Config::XOR_LINE_OFFSET;
     Vector2 secondCurvePoints[segments + 1];
 
     // Generate second curve points for XOR double line
@@ -725,7 +725,7 @@ void GateRenderer::renderTriangularXorGateSymbol(Rectangle bounds, Color fillCol
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
 
     const char* label = "XOR";
-    float fontSize = Config::GATE_LABEL_FONT_SIZE * 0.9f; // Slightly smaller font for better fit
+    float fontSize = Config::GATE_LABEL_FONT_SIZE * Config::GATE_FONT_SIZE_RATIO; // Slightly smaller font for better fit
     Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
     float centerX = leftX + actualWidth * 0.5f;
     Vector2 textPos = {

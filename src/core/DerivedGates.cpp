@@ -2,42 +2,65 @@
 #include "app/Config.h"
 #include <raylib.h>
 
-void DrawPlaceholderGate(LogicGate* gate, const char* label) {
-    Rectangle bounds = gate->getBounds();
-    DrawRectangleRec(bounds, LIGHTGRAY);
-    DrawRectangleLinesEx(bounds, 2, DARKGRAY);
-    DrawText(label, (int)(bounds.x + 5), (int)(bounds.y + 5), 20, BLACK);
+namespace {
+    // Gate positioning constants
+    constexpr float INPUT_PIN_TOP_RATIO = 1.0f / 3.0f;
+    constexpr float INPUT_PIN_BOTTOM_RATIO = 2.0f / 3.0f;
+    constexpr float OUTPUT_PIN_CENTER_RATIO = 0.5f;
 
-    for (size_t i = 0; i < gate->getInputPinCount(); ++i) {
-        const GatePin* pin = gate->getInputPin(i);
-        if (pin) {
-            Vector2 pinPos = pin->getAbsolutePosition();
-            DrawCircleV(pinPos, 5, pin->getState() ? GREEN : RED);
-            DrawCircleLines(pinPos.x, pinPos.y, 5, DARKGRAY);
+    // Gate shape constants
+    constexpr float OR_XOR_WIDTH_RATIO = 0.8f;
+    constexpr float OR_XOR_CURVE_DEPTH_RATIO = 0.12f;
+    constexpr float NOT_WIDTH_RATIO = 0.7f;
+    constexpr float NOT_TRIANGLE_ASPECT_RATIO = 0.866f; // sqrt(3)/2 for equilateral triangle
+    constexpr float INVERSION_BUBBLE_RADIUS = 5.0f;
+
+    /* Draws a placeholder gate for testing purposes */
+    void drawPlaceholderGate(LogicGate* gate, const char* label) {
+        Rectangle bounds = gate->getBounds();
+        DrawRectangleRec(bounds, LIGHTGRAY);
+        DrawRectangleLinesEx(bounds, Config::GATE_OUTLINE_THICKNESS, DARKGRAY);
+        DrawText(label,
+                static_cast<int>(bounds.x + Config::GATE_TEXT_OFFSET),
+                static_cast<int>(bounds.y + Config::GATE_TEXT_OFFSET),
+                static_cast<int>(Config::GATE_TEXT_SIZE),
+                BLACK);
+
+        // Draw input pins
+        for (size_t i = 0; i < gate->getInputPinCount(); ++i) {
+            const GatePin* pin = gate->getInputPin(i);
+            if (pin) {
+                Vector2 pinPos = pin->getAbsolutePosition();
+                DrawCircleV(pinPos, Config::PIN_RADIUS, pin->getState() ? GREEN : RED);
+                DrawCircleLines(pinPos.x, pinPos.y, Config::PIN_RADIUS, DARKGRAY);
+            }
         }
-    }
 
-    for (size_t i = 0; i < gate->getOutputPinCount(); ++i) {
-        const GatePin* pin = gate->getOutputPin(i);
-        if (pin) {
-            Vector2 pinPos = pin->getAbsolutePosition();
-            DrawCircleV(pinPos, 5, pin->getState() ? LIME : MAROON);
-            DrawCircleLines(pinPos.x, pinPos.y, 5, DARKGRAY);
+        // Draw output pins
+        for (size_t i = 0; i < gate->getOutputPinCount(); ++i) {
+            const GatePin* pin = gate->getOutputPin(i);
+            if (pin) {
+                Vector2 pinPos = pin->getAbsolutePosition();
+                DrawCircleV(pinPos, Config::PIN_RADIUS, pin->getState() ? LIME : MAROON);
+                DrawCircleLines(pinPos.x, pinPos.y, Config::PIN_RADIUS, DARKGRAY);
+            }
         }
     }
 }
 
 AndGate::AndGate(std::string gateId, Vector2 pos, float w, float h)
     : LogicGate(gateId, pos, w, h) {
-    initializeInputPin(0, {0, h / 3.0f});
-    initializeInputPin(1, {0, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {w, h / 2.0f});
+    initializeInputPin(0, {0, h * INPUT_PIN_TOP_RATIO});
+    initializeInputPin(1, {0, h * INPUT_PIN_BOTTOM_RATIO});
+    initializeOutputPin(0, {w, h * OUTPUT_PIN_CENTER_RATIO});
 }
 
 void AndGate::evaluate() {
     if (getInputPinCount() < 2 || getOutputPinCount() == 0) {
         return;
     }
+
+    // AND gate: output is true only if all inputs are true
     bool result = true;
     for (size_t i = 0; i < getInputPinCount(); ++i) {
         if (!getInputPin(i)->getState()) {
@@ -49,44 +72,42 @@ void AndGate::evaluate() {
 }
 
 void AndGate::draw() {
-    DrawPlaceholderGate(this, "AND");
+    drawPlaceholderGate(this, "AND");
 }
 
 OrGate::OrGate(std::string gateId, Vector2 pos, float w, float h)
     : LogicGate(gateId, pos, w, h) {
-    float actualWidth = fminf(w * 0.8f, h * 0.876f);
-    float leftX = (w - actualWidth) / 2.0f;
-    float curveDepth = h * 0.12f;
-    float pinRadius = Config::PIN_CLICK_RADIUS;
+    const float actualWidth = fminf(w * OR_XOR_WIDTH_RATIO, h * 0.876f);
+    const float leftX = (w - actualWidth) / 2.0f;
+    const float curveDepth = h * OR_XOR_CURVE_DEPTH_RATIO;
+    const float pinRadius = Config::PIN_CLICK_RADIUS;
 
-    // For input pin 0 (top): at 1/3 height on the curved edge
-    float t0 = 1.0f / 3.0f;
-    float normalizedT0 = 2.0f * t0 - 1.0f; // -1 to 1
-    float curveAmount0 = 1.0f - normalizedT0 * normalizedT0;
-    float gateEdgeX0 = leftX + curveDepth * curveAmount0;
-    float inputX0 = gateEdgeX0 - pinRadius; // Right edge of pin touches gate edge
+    // Calculate input pin positions on the curved edge
+    auto calculateCurvedPinX = [&](float heightRatio) -> float {
+        const float normalizedT = 2.0f * heightRatio - 1.0f; // Convert to -1 to 1 range
+        const float curveAmount = 1.0f - normalizedT * normalizedT;
+        const float gateEdgeX = leftX + curveDepth * curveAmount;
+        return gateEdgeX - pinRadius; // Pin center positioned so right edge touches gate
+    };
 
-    // For input pin 1 (bottom): at 2/3 height on the curved edge
-    float t1 = 2.0f / 3.0f;
-    float normalizedT1 = 2.0f * t1 - 1.0f; // -1 to 1
-    float curveAmount1 = 1.0f - normalizedT1 * normalizedT1;
-    float gateEdgeX1 = leftX + curveDepth * curveAmount1;
-    float inputX1 = gateEdgeX1 - pinRadius; // Right edge of pin touches gate edge
+    const float inputX0 = calculateCurvedPinX(INPUT_PIN_TOP_RATIO);
+    const float inputX1 = calculateCurvedPinX(INPUT_PIN_BOTTOM_RATIO);
 
-    // Output pin: left edge of circle should touch right edge of gate body
-    // So pin center should be at (gate edge + pin radius)
-    float gateRightEdge = leftX + actualWidth;
-    float outputX = gateRightEdge + pinRadius; // Left edge of pin touches gate edge
+    // Output pin positioned so left edge touches right edge of gate body
+    const float gateRightEdge = leftX + actualWidth;
+    const float outputX = gateRightEdge + pinRadius;
 
-    initializeInputPin(0, {inputX0, h / 3.0f});
-    initializeInputPin(1, {inputX1, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {outputX, h / 2.0f});
+    initializeInputPin(0, {inputX0, h * INPUT_PIN_TOP_RATIO});
+    initializeInputPin(1, {inputX1, h * INPUT_PIN_BOTTOM_RATIO});
+    initializeOutputPin(0, {outputX, h * OUTPUT_PIN_CENTER_RATIO});
 }
 
 void OrGate::evaluate() {
     if (getInputPinCount() < 2 || getOutputPinCount() == 0) {
         return;
     }
+
+    // OR gate: output is true if any input is true
     bool result = false;
     for (size_t i = 0; i < getInputPinCount(); ++i) {
         if (getInputPin(i)->getState()) {
@@ -98,92 +119,81 @@ void OrGate::evaluate() {
 }
 
 void OrGate::draw() {
-    DrawPlaceholderGate(this, "OR");
+    drawPlaceholderGate(this, "OR");
 }
 
 XorGate::XorGate(std::string gateId, Vector2 pos, float w, float h)
     : LogicGate(gateId, pos, w, h) {
-    // Calculate pin positions to match the triangular XOR gate visual shape
-    // Use same calculations as in GateRenderer::renderTriangularXorGateShape
-    float actualWidth = fminf(w * 0.8f, h * 0.976f);
-    float leftX = (w - actualWidth) / 2.0f;
-    float curveDepth = h * 0.12f;
+    // XOR gate uses similar curved shape as OR gate
+    const float actualWidth = fminf(w * OR_XOR_WIDTH_RATIO, h * 0.976f);
+    const float leftX = (w - actualWidth) / 2.0f;
+    const float curveDepth = h * OR_XOR_CURVE_DEPTH_RATIO;
+    const float pinRadius = Config::PIN_CLICK_RADIUS;
 
-    // Input pins: right edge of circle should touch left edge of gate body
-    // So pin center should be at (gate edge - pin radius)
-    float pinRadius = Config::PIN_CLICK_RADIUS;
+    // Calculate input pin positions on the curved edge (same as OR gate)
+    auto calculateCurvedPinX = [&](float heightRatio) -> float {
+        const float normalizedT = 2.0f * heightRatio - 1.0f;
+        const float curveAmount = 1.0f - normalizedT * normalizedT;
+        const float gateEdgeX = leftX + curveDepth * curveAmount;
+        return gateEdgeX - pinRadius;
+    };
 
-    // For input pin 0 (top): at 1/3 height on the curved edge
-    float t0 = 1.0f / 3.0f;
-    float normalizedT0 = 2.0f * t0 - 1.0f; // -1 to 1
-    float curveAmount0 = 1.0f - normalizedT0 * normalizedT0;
-    float gateEdgeX0 = leftX + curveDepth * curveAmount0;
-    float inputX0 = gateEdgeX0 - pinRadius; // Right edge of pin touches gate edge
+    const float inputX0 = calculateCurvedPinX(INPUT_PIN_TOP_RATIO);
+    const float inputX1 = calculateCurvedPinX(INPUT_PIN_BOTTOM_RATIO);
 
-    // For input pin 1 (bottom): at 2/3 height on the curved edge
-    float t1 = 2.0f / 3.0f;
-    float normalizedT1 = 2.0f * t1 - 1.0f; // -1 to 1
-    float curveAmount1 = 1.0f - normalizedT1 * normalizedT1;
-    float gateEdgeX1 = leftX + curveDepth * curveAmount1;
-    float inputX1 = gateEdgeX1 - pinRadius; // Right edge of pin touches gate edge
+    const float gateRightEdge = leftX + actualWidth;
+    const float outputX = gateRightEdge + pinRadius;
 
-    // Output pin: left edge of circle should touch right edge of gate body
-    // So pin center should be at (gate edge + pin radius)
-    float gateRightEdge = leftX + actualWidth;
-    float outputX = gateRightEdge + pinRadius; // Left edge of pin touches gate edge
-
-    initializeInputPin(0, {inputX0, h / 3.0f});
-    initializeInputPin(1, {inputX1, 2.0f * h / 3.0f});
-    initializeOutputPin(0, {outputX, h / 2.0f});
+    initializeInputPin(0, {inputX0, h * INPUT_PIN_TOP_RATIO});
+    initializeInputPin(1, {inputX1, h * INPUT_PIN_BOTTOM_RATIO});
+    initializeOutputPin(0, {outputX, h * OUTPUT_PIN_CENTER_RATIO});
 }
 
 void XorGate::evaluate() {
     if (getInputPinCount() < 2 || getOutputPinCount() == 0) {
         return;
     }
-    bool input0State = getInputPin(0)->getState();
-    bool input1State = getInputPin(1)->getState();
+
+    // XOR gate: output is true if inputs are different
+    const bool input0State = getInputPin(0)->getState();
+    const bool input1State = getInputPin(1)->getState();
     getOutputPin(0)->setState(input0State != input1State);
 }
 
 void XorGate::draw() {
-    DrawPlaceholderGate(this, "XOR");
+    drawPlaceholderGate(this, "XOR");
 }
 
 NotGate::NotGate(std::string gateId, Vector2 pos, float w, float h)
     : LogicGate(gateId, pos, w, h) {
-    // Calculate pin positions to match the triangular NOT gate visual shape
-    // Use same calculations as in GateRenderer::renderNotGateSymbol
-    float triangleHeight = h;
-    float idealWidth = triangleHeight * 0.866f; // width = height * sqrt(3)/2 for equilateral triangle
-    float actualWidth = fminf(w * 0.7f, idealWidth); // Use 70% of available width for compact appearance
-    float leftX = (w - actualWidth) / 2.0f; // Centered within bounds
+    const float triangleHeight = h;
+    const float idealWidth = triangleHeight * NOT_TRIANGLE_ASPECT_RATIO;
+    const float actualWidth = fminf(w * NOT_WIDTH_RATIO, idealWidth);
+    const float leftX = (w - actualWidth) / 2.0f;
 
-    float pinRadius = Config::PIN_CLICK_RADIUS;
-    float inversionBubbleRadius = 5.0f; // Same as in renderNotGateSymbol
+    const float pinRadius = Config::PIN_CLICK_RADIUS;
 
-    // Input pin: right edge of circle should touch left edge of triangle
-    // So pin center should be at (triangle left edge - pin radius)
-    float inputX = leftX - pinRadius;
+    // Input pin positioned so right edge touches left edge of triangle
+    const float inputX = leftX - pinRadius;
 
-    // Output pin: left edge of circle should touch right edge of inversion bubble
-    // Triangle right point is at (leftX + actualWidth), bubble extends by its radius
-    // So pin center should be at (triangle right + bubble radius + pin radius)
-    float triangleRightEdge = leftX + actualWidth;
-    float outputX = triangleRightEdge + inversionBubbleRadius + pinRadius;
+    // Output pin positioned after triangle and inversion bubble
+    const float triangleRightEdge = leftX + actualWidth;
+    const float outputX = triangleRightEdge + INVERSION_BUBBLE_RADIUS + pinRadius;
 
-    initializeInputPin(0, {inputX, h / 2.0f});
-    initializeOutputPin(0, {outputX, h / 2.0f});
+    initializeInputPin(0, {inputX, h * OUTPUT_PIN_CENTER_RATIO});
+    initializeOutputPin(0, {outputX, h * OUTPUT_PIN_CENTER_RATIO});
 }
 
 void NotGate::evaluate() {
     if (getInputPinCount() == 0 || getOutputPinCount() == 0) {
         return;
     }
+
+    // NOT gate: output is the inverse of input
     getOutputPin(0)->setState(!getInputPin(0)->getState());
 }
 
 void NotGate::draw() {
-    DrawPlaceholderGate(this, "NOT");
+    drawPlaceholderGate(this, "NOT");
 }
 

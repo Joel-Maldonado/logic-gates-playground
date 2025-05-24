@@ -5,41 +5,41 @@
 #include <cmath>
 
 UIManager::UIManager(std::shared_ptr<CircuitSimulator> sim)
-    : isDrawingWire(false),
-      wireStartPin(nullptr),
-      isPanning(false),
-      panStartPosition({0, 0}),
-      lastMousePosition({0, 0}),
-      panVelocity({0, 0}),
-      panInertia(0.9f),
-      simulator(sim),
-      selectedComponent(nullptr),
-      selectedWire(nullptr),
-      isDraggingComponent(false),
-      isDraggingWirePoint(false),
-      dragStartOffset({0, 0}),
-      clickedInputSource(nullptr),
-      dragStartPosition({0, 0}) {
+    : isDrawingWire_(false),
+      wireStartPin_(nullptr),
+      isPanning_(false),
+      panStartPosition_({0, 0}),
+      lastMousePosition_({0, 0}),
+      panVelocity_({0, 0}),
+      panInertia_(0.9f),
+      simulator_(sim),
+      selectedComponent_(nullptr),
+      selectedWire_(nullptr),
+      isDraggingComponent_(false),
+      isDraggingWirePoint_(false),
+      dragStartOffset_({0, 0}),
+      clickedInputSource_(nullptr),
+      dragStartPosition_({0, 0}) {
 
-    camera.target = { (float)Config::SCREEN_WIDTH / 2, (float)Config::SCREEN_HEIGHT / 2 };
-    camera.offset = { (float)Config::SCREEN_WIDTH / 2, (float)Config::SCREEN_HEIGHT / 2 };
-    camera.rotation = 0.0f;
-    camera.zoom = 1.0f;
+    camera_.target = { (float)Config::SCREEN_WIDTH / 2, (float)Config::SCREEN_HEIGHT / 2 };
+    camera_.offset = { (float)Config::SCREEN_WIDTH / 2, (float)Config::SCREEN_HEIGHT / 2 };
+    camera_.rotation = 0.0f;
+    camera_.zoom = 1.0f;
 
-    canvasBounds = {
+    canvasBounds_ = {
         Config::PALETTE_WIDTH,
         0,
         (float)Config::SCREEN_WIDTH - Config::PALETTE_WIDTH,
         (float)Config::SCREEN_HEIGHT
     };
 
-    paletteManager = std::make_unique<PaletteManager>(simulator);
-    gateRenderer = std::make_unique<GateRenderer>();
-    wireRenderer = std::make_unique<WireRenderer>();
+    paletteManager_ = std::make_unique<PaletteManager>(simulator_);
+    gateRenderer_ = std::make_unique<GateRenderer>();
+    wireRenderer_ = std::make_unique<WireRenderer>();
 }
 
 void UIManager::initialize() {
-    paletteManager->initialize();
+    paletteManager_->initialize();
 }
 
 void UIManager::render() {
@@ -48,19 +48,19 @@ void UIManager::render() {
 
     updateCamera();
 
-    BeginMode2D(camera);
+    BeginMode2D(camera_);
 
     if (Config::GRID_ENABLED) {
         renderGrid();
     }
 
-    wireRenderer->renderWires(simulator->getWires());
+    wireRenderer_->renderWires(simulator_->getWires());
 
-    if (isDrawingWire && wireStartPin) {
-        Vector2 worldMousePos = GetScreenToWorld2D(GetMousePosition(), camera);
+    if (isDrawingWire_ && wireStartPin_) {
+        Vector2 worldMousePos = GetScreenToWorld2D(GetMousePosition(), camera_);
 
         bool isOverInputPin = false;
-        for (const auto& gate : simulator->getGates()) {
+        for (const auto& gate : simulator_->getGates()) {
             for (size_t i = 0; i < gate->getInputPinCount(); i++) {
                 GatePin* pin = gate->getInputPin(i);
                 if (pin && pin->isMouseOverPin(worldMousePos) && !pin->isConnectedInput()) {
@@ -71,26 +71,26 @@ void UIManager::render() {
             if (isOverInputPin) break;
         }
 
-        wireRenderer->renderWirePreview(
-            wireStartPin->getAbsolutePosition(),
-            wirePreviewEndPos,
+        wireRenderer_->renderWirePreview(
+            wireStartPin_->getAbsolutePosition(),
+            wirePreviewEndPos_,
             isOverInputPin,
             Config::Colors::WIRE_PREVIEW,
             Config::WIRE_THICKNESS_PREVIEW
         );
 
-        gateRenderer->renderWirePreview(
-            wireStartPin,
-            simulator->getGates(),
+        gateRenderer_->renderWirePreview(
+            wireStartPin_,
+            simulator_->getGates(),
             worldMousePos
         );
     }
 
-    gateRenderer->renderGates(simulator->getGates(), camera);
+    gateRenderer_->renderGates(simulator_->getGates(), camera_);
 
     EndMode2D();
 
-    paletteManager->render(camera);
+    paletteManager_->render(camera_);
 
     DrawFPS(GetScreenWidth() - 90, 10);
 
@@ -101,19 +101,19 @@ void UIManager::processInput() {
 }
 
 Camera2D& UIManager::getCamera() {
-    return camera;
+    return camera_;
 }
 
 Rectangle UIManager::getCanvasBounds() const {
-    return canvasBounds;
+    return canvasBounds_;
 }
 
 void UIManager::selectComponent(LogicGate* component) {
     deselectAll();
 
     if (component) {
-        selectedComponent = component;
-        selectedComponent->setSelected(true);
+        selectedComponent_ = component;
+        selectedComponent_->setSelected(true);
     }
 }
 
@@ -121,20 +121,20 @@ void UIManager::selectWire(Wire* wire) {
     deselectAll();
 
     if (wire) {
-        selectedWire = wire;
-        selectedWire->setSelected(true);
+        selectedWire_ = wire;
+        selectedWire_->setSelected(true);
     }
 }
 
 void UIManager::deselectAll() {
-    if (selectedComponent) {
-        selectedComponent->setSelected(false);
-        selectedComponent = nullptr;
+    if (selectedComponent_) {
+        selectedComponent_->setSelected(false);
+        selectedComponent_ = nullptr;
     }
 
-    if (selectedWire) {
-        selectedWire->setSelected(false);
-        selectedWire = nullptr;
+    if (selectedWire_) {
+        selectedWire_->setSelected(false);
+        selectedWire_ = nullptr;
     }
 }
 
@@ -143,40 +143,40 @@ void UIManager::startDrawingWire(GatePin* pin) {
         return;
     }
 
-    isDrawingWire = true;
-    wireStartPin = pin;
-    wirePreviewEndPos = pin->getAbsolutePosition();
-    isDraggingComponent = false;
+    isDrawingWire_ = true;
+    wireStartPin_ = pin;
+    wirePreviewEndPos_ = pin->getAbsolutePosition();
+    isDraggingComponent_ = false;
 }
 
 void UIManager::updateWirePreview(Vector2 mousePos) {
-    if (!isDrawingWire || !wireStartPin) {
+    if (!isDrawingWire_ || !wireStartPin_) {
         return;
     }
 
-    wirePreviewEndPos = mousePos;
+    wirePreviewEndPos_ = mousePos;
 }
 
 bool UIManager::completeWireDrawing(GatePin* pin) {
-    if (!isDrawingWire || !wireStartPin || !pin) {
+    if (!isDrawingWire_ || !wireStartPin_ || !pin) {
         return false;
     }
 
-    if (pin == wireStartPin || pin->getType() != PinType::INPUT_PIN || pin->isConnectedInput()) {
+    if (pin == wireStartPin_ || pin->getType() != PinType::INPUT_PIN || pin->isConnectedInput()) {
         return false;
     }
 
-    Wire* wire = simulator->createWire(wireStartPin, pin);
+    Wire* wire = simulator_->createWire(wireStartPin_, pin);
 
-    isDrawingWire = false;
-    wireStartPin = nullptr;
+    isDrawingWire_ = false;
+    wireStartPin_ = nullptr;
 
     return (wire != nullptr);
 }
 
 void UIManager::cancelWireDrawing() {
-    isDrawingWire = false;
-    wireStartPin = nullptr;
+    isDrawingWire_ = false;
+    wireStartPin_ = nullptr;
 }
 
 void UIManager::startDraggingComponent(LogicGate* component, Vector2 mousePos) {
@@ -185,40 +185,40 @@ void UIManager::startDraggingComponent(LogicGate* component, Vector2 mousePos) {
     }
 
     selectComponent(component);
-    isDraggingComponent = true;
-    dragStartOffset = Vector2Subtract(mousePos, component->getPosition());
-    dragStartPosition = mousePos;
+    isDraggingComponent_ = true;
+    dragStartOffset_ = Vector2Subtract(mousePos, component->getPosition());
+    dragStartPosition_ = mousePos;
 }
 
 void UIManager::updateDragging(Vector2 mousePos) {
-    if (!isDraggingComponent || !selectedComponent) {
+    if (!isDraggingComponent_ || !selectedComponent_) {
         return;
     }
 
-    Vector2 position = Vector2Subtract(mousePos, dragStartOffset);
-    Vector2 alignedPosition = checkWireAlignmentSnapping(selectedComponent, position);
-    selectedComponent->setPosition(alignedPosition);
-    updateWirePathsForComponent(selectedComponent);
+    Vector2 position = Vector2Subtract(mousePos, dragStartOffset_);
+    Vector2 alignedPosition = checkWireAlignmentSnapping(selectedComponent_, position);
+    selectedComponent_->setPosition(alignedPosition);
+    updateWirePathsForComponent(selectedComponent_);
 }
 
 void UIManager::stopDragging() {
-    if (isDraggingComponent && selectedComponent) {
-        Vector2 currentPos = selectedComponent->getPosition();
-        Vector2 alignedPos = checkWireAlignmentSnapping(selectedComponent, currentPos);
-        selectedComponent->setPosition(alignedPos);
-        updateWirePathsForComponent(selectedComponent);
+    if (isDraggingComponent_ && selectedComponent_) {
+        Vector2 currentPos = selectedComponent_->getPosition();
+        Vector2 alignedPos = checkWireAlignmentSnapping(selectedComponent_, currentPos);
+        selectedComponent_->setPosition(alignedPos);
+        updateWirePathsForComponent(selectedComponent_);
     }
 
-    isDraggingComponent = false;
+    isDraggingComponent_ = false;
 }
 
 bool UIManager::startDraggingWirePoint(Vector2 mousePos) {
-    if (!selectedWire) {
+    if (!selectedWire_) {
         return false;
     }
 
-    if (selectedWire->startDraggingPoint(mousePos)) {
-        isDraggingWirePoint = true;
+    if (selectedWire_->startDraggingPoint(mousePos)) {
+        isDraggingWirePoint_ = true;
         return true;
     }
 
@@ -226,64 +226,64 @@ bool UIManager::startDraggingWirePoint(Vector2 mousePos) {
 }
 
 void UIManager::updateWirePointDragging(Vector2 mousePos) {
-    if (!isDraggingWirePoint || !selectedWire) {
+    if (!isDraggingWirePoint_ || !selectedWire_) {
         return;
     }
 
-    selectedWire->updateDraggedPoint(mousePos);
+    selectedWire_->updateDraggedPoint(mousePos);
 }
 
 void UIManager::stopWirePointDragging() {
-    if (selectedWire) {
-        selectedWire->stopDraggingPoint();
+    if (selectedWire_) {
+        selectedWire_->stopDraggingPoint();
     }
-    isDraggingWirePoint = false;
+    isDraggingWirePoint_ = false;
 }
 
 bool UIManager::isDraggingWirePointActive() const {
-    return isDraggingWirePoint;
+    return isDraggingWirePoint_;
 }
 
 void UIManager::deleteSelected() {
-    if (selectedComponent) {
-        simulator->removeGate(selectedComponent);
-        selectedComponent = nullptr;
-    } else if (selectedWire) {
-        simulator->removeWire(selectedWire);
-        selectedWire = nullptr;
+    if (selectedComponent_) {
+        simulator_->removeGate(selectedComponent_);
+        selectedComponent_ = nullptr;
+    } else if (selectedWire_) {
+        simulator_->removeWire(selectedWire_);
+        selectedWire_ = nullptr;
     }
 }
 
 LogicGate* UIManager::getSelectedComponent() const {
-    return selectedComponent;
+    return selectedComponent_;
 }
 
 Wire* UIManager::getSelectedWire() const {
-    return selectedWire;
+    return selectedWire_;
 }
 
 bool UIManager::isDrawingWireActive() const {
-    return isDrawingWire;
+    return isDrawingWire_;
 }
 
 PaletteManager& UIManager::getPaletteManager() {
-    return *paletteManager;
+    return *paletteManager_;
 }
 
 void UIManager::setClickedInputSource(InputSource* inputSource) {
-    clickedInputSource = inputSource;
+    clickedInputSource_ = inputSource;
 }
 
 bool UIManager::wasDragged(Vector2 currentMousePos) const {
-    float dx = currentMousePos.x - dragStartPosition.x;
-    float dy = currentMousePos.y - dragStartPosition.y;
+    float dx = currentMousePos.x - dragStartPosition_.x;
+    float dy = currentMousePos.y - dragStartPosition_.y;
     float distance = sqrt(dx*dx + dy*dy);
     return distance > Config::DRAG_THRESHOLD;
 }
 
 void UIManager::renderGrid() {
-    Vector2 screenTopLeft = GetScreenToWorld2D({0, 0}, camera);
-    Vector2 screenBottomRight = GetScreenToWorld2D({(float)GetScreenWidth(), (float)GetScreenHeight()}, camera);
+    Vector2 screenTopLeft = GetScreenToWorld2D({0, 0}, camera_);
+    Vector2 screenBottomRight = GetScreenToWorld2D({(float)GetScreenWidth(), (float)GetScreenHeight()}, camera_);
 
     int startX = floor(screenTopLeft.x / Config::GRID_SIZE) * Config::GRID_SIZE;
     int startY = floor(screenTopLeft.y / Config::GRID_SIZE) * Config::GRID_SIZE;
@@ -303,7 +303,7 @@ void UIManager::renderGrid() {
         DrawLineV({screenTopLeft.x, y}, {screenBottomRight.x, y}, Config::Colors::GRID_LINE);
     }
 
-    float dotSize = 1.5f / camera.zoom;
+    float dotSize = 1.5f / camera_.zoom;
     dotSize = std::max(0.5f, std::min(2.0f, dotSize));
 
     for (float x = startX; x <= endX; x += Config::GRID_SIZE) {
@@ -318,50 +318,50 @@ void UIManager::renderGrid() {
 }
 
 void UIManager::startPanning(Vector2 mousePos) {
-    if (!isPanning) {
-        isPanning = true;
-        panStartPosition = mousePos;
-        lastMousePosition = mousePos;
-        panVelocity = {0, 0};
+    if (!isPanning_) {
+        isPanning_ = true;
+        panStartPosition_ = mousePos;
+        lastMousePosition_ = mousePos;
+        panVelocity_ = {0, 0};
     }
 }
 
 void UIManager::updatePanning(Vector2 mousePos) {
-    if (isPanning) {
+    if (isPanning_) {
         Vector2 delta = {
-            mousePos.x - lastMousePosition.x,
-            mousePos.y - lastMousePosition.y
+            mousePos.x - lastMousePosition_.x,
+            mousePos.y - lastMousePosition_.y
         };
 
-        camera.target.x -= delta.x / camera.zoom;
-        camera.target.y -= delta.y / camera.zoom;
+        camera_.target.x -= delta.x / camera_.zoom;
+        camera_.target.y -= delta.y / camera_.zoom;
 
-        panVelocity.x = delta.x / camera.zoom;
-        panVelocity.y = delta.y / camera.zoom;
+        panVelocity_.x = delta.x / camera_.zoom;
+        panVelocity_.y = delta.y / camera_.zoom;
 
-        lastMousePosition = mousePos;
+        lastMousePosition_ = mousePos;
     }
 }
 
 void UIManager::stopPanning() {
-    isPanning = false;
+    isPanning_ = false;
 }
 
 void UIManager::updateCamera() {
-    if (!isPanning && (panVelocity.x != 0 || panVelocity.y != 0)) {
-        camera.target.x -= panVelocity.x;
-        camera.target.y -= panVelocity.y;
+    if (!isPanning_ && (panVelocity_.x != 0 || panVelocity_.y != 0)) {
+        camera_.target.x -= panVelocity_.x;
+        camera_.target.y -= panVelocity_.y;
 
-        panVelocity.x *= panInertia;
-        panVelocity.y *= panInertia;
+        panVelocity_.x *= panInertia_;
+        panVelocity_.y *= panInertia_;
 
-        if (fabs(panVelocity.x) < 0.01f) panVelocity.x = 0;
-        if (fabs(panVelocity.y) < 0.01f) panVelocity.y = 0;
+        if (fabs(panVelocity_.x) < 0.01f) panVelocity_.x = 0;
+        if (fabs(panVelocity_.y) < 0.01f) panVelocity_.y = 0;
     }
 }
 
 bool UIManager::isPanningActive() const {
-    return isPanning;
+    return isPanning_;
 }
 
 void UIManager::updateWirePathsForComponent(LogicGate* component) {
@@ -380,16 +380,16 @@ void UIManager::updateWirePathsForComponent(LogicGate* component) {
 
 
 void UIManager::handleWindowResize(int newWidth, int newHeight) {
-    camera.offset = { (float)newWidth / 2, (float)newHeight / 2 };
+    camera_.offset = { (float)newWidth / 2, (float)newHeight / 2 };
 
-    canvasBounds = {
+    canvasBounds_ = {
         Config::PALETTE_WIDTH,
         0,
         (float)newWidth - Config::PALETTE_WIDTH,
         (float)newHeight
     };
 
-    paletteManager->handleWindowResize();
+    paletteManager_->handleWindowResize();
 }
 
 Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position) {

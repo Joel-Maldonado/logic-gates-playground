@@ -5,20 +5,24 @@
 #include <string>
 
 namespace Config {
+    // Window configuration
     constexpr int SCREEN_WIDTH = 1280;
     constexpr int SCREEN_HEIGHT = 720;
     constexpr int TARGET_FPS = 60;
     constexpr const char* WINDOW_TITLE = "Logic Gates Playground";
 
+    // UI layout constants
     constexpr float PALETTE_WIDTH = 180.0f;
     constexpr float PALETTE_ITEM_HEIGHT = 60.0f;
     constexpr float CANVAS_PADDING = 10.0f;
 
+    // Grid configuration
     constexpr bool GRID_ENABLED = true;
     constexpr float GRID_SIZE = 25.0f;
     constexpr float GRID_LINE_THICKNESS = 1.0f;
     constexpr float GRID_OPACITY = 0.2f;
 
+    // Default component sizes
     constexpr float DEFAULT_GATE_WIDTH = 100.0f;
     constexpr float DEFAULT_GATE_HEIGHT = 60.0f;
     constexpr float INPUT_OUTPUT_SIZE = 50.0f;
@@ -28,17 +32,40 @@ namespace Config {
     constexpr float PIN_HOVER_TOLERANCE = 8.0f;
     constexpr float PIN_LABEL_FONT_SIZE = 16.0f;
     constexpr float PIN_LABEL_OFFSET = 16.0f;
+    constexpr float PIN_RADIUS = 5.0f;
 
     // Wire settings
     constexpr float WIRE_THICKNESS_NORMAL = 3.0f;
     constexpr float WIRE_THICKNESS_SELECTED = 5.0f;
     constexpr float WIRE_THICKNESS_PREVIEW = 3.0f;
     constexpr float WIRE_HOVER_TOLERANCE = 8.0f;
+    constexpr float WIRE_HORIZONTAL_OFFSET = 10.0f;
 
     // Gate visual settings
     constexpr float GATE_LABEL_FONT_SIZE = 18.0f;
     constexpr float GATE_OUTLINE_THICKNESS = 2.0f;
-    constexpr float GATE_OUTLINE_THICKNESS_SELECTED = 2.0f;
+    constexpr float GATE_OUTLINE_THICKNESS_SELECTED = 3.0f;
+    constexpr float GATE_TEXT_SIZE = 20.0f;
+    constexpr float GATE_TEXT_OFFSET = 5.0f;
+
+    // Component visual settings
+    constexpr float CONNECTOR_PIN_RADIUS = 5.0f;
+    constexpr float LABEL_FONT_SIZE = 14.0f;
+    constexpr float LABEL_SPACING = 3.0f;
+
+    // Gate rendering constants
+    constexpr float GATE_WIDTH_RATIO = 0.85f;
+    constexpr float GATE_CURVE_DEPTH_RATIO = 0.15f;
+    constexpr float GATE_XOR_CURVE_DEPTH_RATIO = 0.12f;
+    constexpr float GATE_NOT_WIDTH_RATIO = 0.7f;
+    constexpr float GATE_TRIANGLE_ASPECT_RATIO = 0.866f;
+    constexpr float GATE_OR_WIDTH_RATIO = 0.8f;
+    constexpr float GATE_XOR_WIDTH_RATIO = 0.8f;
+    constexpr float INVERSION_BUBBLE_RADIUS = 5.0f;
+    constexpr int GATE_CURVE_SEGMENTS = 20;
+    constexpr float GATE_SHADOW_GRADIENT_LAYERS = 10.0f;
+    constexpr float XOR_LINE_OFFSET = 4.0f;
+    constexpr float GATE_FONT_SIZE_RATIO = 0.9f;
 
     // Animation settings
     constexpr float HOVER_ANIMATION_SPEED = 0.1f;
