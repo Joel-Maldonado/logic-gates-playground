@@ -124,7 +124,7 @@ void runCustomGateXnorTest() {
     xnorData.pinMappings.push_back({0, "or_final", 0, true}); // CustomGate Output 0 from or_final's output pin 0
 
     // --- Simulator Setup ---
-    CircuitSimulator simulator(true); // true for enabling event logging from simulator
+    CircuitSimulator simulator; // Event logging flag removed
 
     // Create the CustomGate
     // Note: CustomGate constructor uses default width/height. For this test, it's fine.
@@ -146,9 +146,9 @@ void runCustomGateXnorTest() {
     simulator.addGate(std::move(masterOutputQ));
 
     // Wire up the external test rig to the CustomGate
-    simulator.addWire(std::make_unique<Wire>("w_masterA_cgXnor", pMasterInputA->getOutputPin(0), pCustomXnorGate->getInputPin(0)));
-    simulator.addWire(std::make_unique<Wire>("w_masterB_cgXnor", pMasterInputB->getOutputPin(0), pCustomXnorGate->getInputPin(1)));
-    simulator.addWire(std::make_unique<Wire>("w_cgXnor_masterQ", pCustomXnorGate->getOutputPin(0), pMasterOutputQ->getInputPin(0)));
+    simulator.createWire(pMasterInputA->getOutputPin(0), pCustomXnorGate->getInputPin(0));
+    simulator.createWire(pMasterInputB->getOutputPin(0), pCustomXnorGate->getInputPin(1));
+    simulator.createWire(pCustomXnorGate->getOutputPin(0), pMasterOutputQ->getInputPin(0));
 
     std::cout << "Simulator setup complete. Starting truth table tests..." << std::endl;
 
