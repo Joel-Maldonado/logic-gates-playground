@@ -32,6 +32,7 @@ private:
     std::vector<GatePin*> internalToExternalOutputPinMap_;
 
     void setupInternalCircuit();
+    LogicGate* findInternalGateById(const std::string& id); // Helper function
 
     bool isValid_; // Flag to indicate if setup was successful
 };

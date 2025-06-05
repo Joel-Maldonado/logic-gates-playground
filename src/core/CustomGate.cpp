@@ -2,6 +2,8 @@
 #include "core/GatePin.h" // For GatePin details if needed
 #include "core/Wire.h"    // For creating internal wires
 #include "core/DerivedGates.h" // For instantiating basic gates like AndGate, OrGate, etc.
+#include "core/InputSource.h"  // Added as requested
+#include "core/OutputSink.h"   // Added as requested
 #include <stdexcept> // For std::runtime_error
 #include <iostream>  // For std::cerr
 
@@ -9,7 +11,7 @@
 CustomGate::CustomGate(std::string gateId, Vector2 pos, const CustomGateData& definition)
     : LogicGate(gateId, pos, 100, 50 + (definition.numExternalInputPins > 0 ? definition.numExternalInputPins : 1) * 15 + (definition.numExternalOutputPins > 0 ? definition.numExternalOutputPins : 1) * 15), // Placeholder width/height, ensure minimum height
       definition_(definition),
-      internalCircuit_(std::make_unique<CircuitSimulator>(false)), // false: not the main simulator
+      internalCircuit_(std::make_unique<CircuitSimulator>()), // Boolean argument removed
       isValid_(true) // Assume valid until an error occurs during setup
 {
     if (definition.numExternalInputPins < 0) {
@@ -109,8 +111,8 @@ void CustomGate::setupInternalCircuit() {
     for (const auto& wireDesc : definition_.internalWires) {
         if (!isValid_) return;
 
-        LogicGate* fromGate = internalCircuit_->getGateById(wireDesc.fromGateId);
-        LogicGate* toGate = internalCircuit_->getGateById(wireDesc.toGateId);
+        LogicGate* fromGate = this->findInternalGateById(wireDesc.fromGateId);
+        LogicGate* toGate = this->findInternalGateById(wireDesc.toGateId);
 
         if (!fromGate) {
             std::cerr << "Error (CustomGate " << id_ << "): Source gate for internal wire not found: '" << wireDesc.fromGateId << "'." << std::endl;
@@ -141,10 +143,11 @@ void CustomGate::setupInternalCircuit() {
             isValid_ = false; return;
         }
 
-        std::string wireId = "internal_wire_" + wireDesc.fromGateId + "_" + std::to_string(wireDesc.fromPinIndex) + "_to_" + wireDesc.toGateId + "_" + std::to_string(wireDesc.toPinIndex);
-        if (!internalCircuit_->addWire(std::make_unique<Wire>(wireId, fromPin, toPin))) {
-            std::cerr << "Error (CustomGate " << id_ << "): Failed to add internal wire from " << wireDesc.fromGateId << ":" << wireDesc.fromPinIndex
-                      << " to " << wireDesc.toGateId << ":" << wireDesc.toPinIndex << " (e.g. input pin already connected)." << std::endl;
+        // std::string wireId = "internal_wire_" + wireDesc.fromGateId + "_" + std::to_string(wireDesc.fromPinIndex) + "_to_" + wireDesc.toGateId + "_" + std::to_string(wireDesc.toPinIndex); // Wire ID removed
+        Wire* newInternalWire = internalCircuit_->createWire(fromPin, toPin); // Changed from addWire to createWire
+        if (!newInternalWire) { // Check if the returned pointer is null
+            std::cerr << "Error (CustomGate " << id_ << "): Failed to create internal wire from " << wireDesc.fromGateId << ":" << wireDesc.fromPinIndex
+                      << " to " << wireDesc.toGateId << ":" << wireDesc.toPinIndex << " (e.g. input pin already connected, or createWire failed)." << std::endl;
             isValid_ = false; return;
         }
     }
@@ -162,7 +165,7 @@ void CustomGate::setupInternalCircuit() {
     for (const auto& mapping : definition_.pinMappings) {
         if (!isValid_) return;
 
-        LogicGate* internalGate = internalCircuit_->getGateById(mapping.internalGateId);
+        LogicGate* internalGate = this->findInternalGateById(mapping.internalGateId);
         if (!internalGate) {
             std::cerr << "Error (CustomGate " << id_ << "): Gate for pin mapping not found: '" << mapping.internalGateId << "'." << std::endl;
             isValid_ = false; return;
@@ -245,6 +248,25 @@ void CustomGate::setupInternalCircuit() {
     if (!isValid_) return; // Stop if mapping checks failed
 }
 
+LogicGate* CustomGate::findInternalGateById(const std::string& id) {
+    if (!internalCircuit_) {
+        // This should ideally not happen if constructor is robust.
+        // std::cerr << "Warning (CustomGate " << this->id_ << "): findInternalGateById called but internalCircuit_ is null." << std::endl;
+        return nullptr;
+    }
+    // Assuming CircuitSimulator has getGates() returning a list of std::unique_ptr<LogicGate> or similar.
+    // This is a linear scan, which is fine for moderate numbers of internal gates.
+    // If CircuitSimulator offers a direct getGateById, that would be more efficient, but this helper
+    // encapsulates the interaction with internalCircuit_ for finding gates.
+    const auto& allInternalGates = internalCircuit_->getGates(); // Assumes CircuitSimulator::getGates() exists
+    for (const auto& gate_ptr : allInternalGates) {
+        if (gate_ptr && gate_ptr->getId() == id) {
+            return gate_ptr.get();
+        }
+    }
+    return nullptr;
+}
+
 void CustomGate::evaluate() {
     if (!isValid_ || !internalCircuit_) {
         // If not valid, or circuit doesn't exist, do nothing.
@@ -269,7 +291,7 @@ void CustomGate::evaluate() {
                 }
                 continue;
             }
-            LogicGate* internalGate = internalCircuit_->getGateById(mapping.internalGateId);
+            LogicGate* internalGate = this->findInternalGateById(mapping.internalGateId);
             GatePin* internalPin = nullptr;
             if (internalGate && mapping.internalPinIndex >= 0 && static_cast<size_t>(mapping.internalPinIndex) < internalGate->getInputPinCount()) {
                 internalPin = internalGate->getInputPin(mapping.internalPinIndex);
@@ -286,7 +308,7 @@ void CustomGate::evaluate() {
         }
     }
 
-    internalCircuit_->evaluateAll();
+    internalCircuit_->update(); // Changed from evaluateAll to update
 
     // Update CustomGate's external output pin states from the mapped internal gates' output pins
     for (size_t i = 0; i < outputPins_.size(); ++i) {
@@ -301,9 +323,8 @@ void CustomGate::evaluate() {
         }
     }
 
-    for (auto& pin : outputPins_) {
-        pin.propagateStateToConnectedWires();
-    }
+    // Removed loop: for (auto& pin : outputPins_) { pin.propagateStateToConnectedWires(); }
+    // The main simulator loop is expected to handle wire state propagation after all gates are evaluated.
     isDirty_ = false;
 }
 
