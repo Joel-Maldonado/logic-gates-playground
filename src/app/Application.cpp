@@ -1,5 +1,6 @@
 #include "app/Application.h"
 #include "app/Config.h"
+#include "core/CustomGateRegistry.h" // Added include
 #include <raylib.h>
 
 Application::Application()
@@ -7,6 +8,7 @@ Application::Application()
       prevWindowWidth(Config::SCREEN_WIDTH),
       prevWindowHeight(Config::SCREEN_HEIGHT) {
     simulator = std::make_shared<CircuitSimulator>();
+    customGateRegistry_ = std::make_unique<CustomGateRegistry>("custom_gates"); // Instantiate registry
 }
 
 void Application::initialize() {
@@ -14,7 +16,9 @@ void Application::initialize() {
     InitWindow(Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, Config::WINDOW_TITLE);
     SetTargetFPS(Config::TARGET_FPS);
 
-    uiManager = std::make_unique<UIManager>(simulator);
+    customGateRegistry_->loadDefinitions(); // Load definitions after window init (if paths are relative etc)
+
+    uiManager = std::make_unique<UIManager>(simulator, customGateRegistry_.get()); // Pass registry pointer
     uiManager->initialize();
     inputHandler = std::make_unique<InputHandler>(simulator, uiManager.get());
 

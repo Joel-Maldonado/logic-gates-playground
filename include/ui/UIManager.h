@@ -7,7 +7,20 @@
 #include "ui/GateRenderer.h"
 #include "ui/WireRenderer.h"
 #include "core/InputSource.h"
+#include "core/CustomGateData.h" // Added for CustomGateData
 #include <memory>
+#include <string>
+
+// Forward declaration
+class CustomGateRegistry;
+
+/**
+ * Enum for UI modes
+ */
+enum class UIMode {
+    CIRCUIT_VIEW,
+    CUSTOM_GATE_EDITOR
+};
 
 /**
  * Main UI management class that coordinates all user interface elements
@@ -46,8 +59,51 @@ private:
     InputSource* clickedInputSource_;
     Vector2 dragStartPosition_;
 
+    // --- Custom Gate Editor State ---
+    UIMode currentUIMode_;
+    CustomGateData currentCustomGateDefinition_; // Holds the definition being edited
+    std::unique_ptr<CircuitSimulator> customGateEditorSimulator_; // Simulator for the sandbox
+
+    // Properties for the custom gate being defined in the editor UI
+    char editorGateNameBuffer_[128];
+    char editorCategoryBuffer_[128];
+    int editorNumInputs_;
+    int editorNumOutputs_;
+    int activeTextField_; // 0 for none, 1 for name, 2 for category
+
+    // Editor's own palette and canvas management
+    std::unique_ptr<PaletteManager> customGateEditorPalette_;
+    Rectangle editorCanvasBounds_;
+    LogicGate* selectedInternalGate_;
+    bool isDraggingInternalGate_;
+    Vector2 internalGateDragStartOffset_;
+    bool isDraggingFromEditorPalette_;
+
+    // Editor Wiring State
+    bool isDrawingWireInEditor_;
+    GatePin* editorWireStartPin_;
+
+    // Pin Mapping UI State
+    int mappingSelectedExtPinIndex_;    // 0-based index for inputs or outputs list
+    PinType mappingSelectedExtPinType_; // Type of external pin selected for mapping (INPUT_PIN or OUTPUT_PIN)
+    bool isSelectingTargetForMapping_;
+
+    // Camera2D editorCamera_;
+    // --- End Custom Gate Editor State ---
+
+    CustomGateRegistry* customGateRegistry_; // Pointer to the gate registry
+    std::string editorStatusMessage_;        // For displaying messages in editor UI
+
+private:
+    void enterCustomGateEditorMode();
+    void exitCustomGateEditorMode();
+    void renderCustomGateEditorInterface();
+    void processCustomGateEditorInterfaceInput();
+    void handleTextInput(char* buffer, int bufferSize, int charPressed);
+    void deselectInternalGate();
+
 public:
-    UIManager(std::shared_ptr<CircuitSimulator> sim);
+    UIManager(std::shared_ptr<CircuitSimulator> sim, CustomGateRegistry* registry); // Updated constructor
 
     /** Initializes UI components and sets up initial state */
     void initialize();
