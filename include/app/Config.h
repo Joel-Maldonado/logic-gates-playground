@@ -20,7 +20,7 @@ namespace Config {
     constexpr bool GRID_ENABLED = true;
     constexpr float GRID_SIZE = 25.0f;
     constexpr float GRID_LINE_THICKNESS = 1.0f;
-    constexpr float GRID_OPACITY = 0.2f;
+    constexpr float GRID_OPACITY = 0.15f;
 
     // Default component sizes
     constexpr float DEFAULT_GATE_WIDTH = 100.0f;
@@ -35,9 +35,10 @@ namespace Config {
     constexpr float PIN_RADIUS = 5.0f;
 
     // Wire settings
-    constexpr float WIRE_THICKNESS_NORMAL = 3.0f;
-    constexpr float WIRE_THICKNESS_SELECTED = 5.0f;
-    constexpr float WIRE_THICKNESS_PREVIEW = 3.0f;
+    // Slightly thinner wires for a cleaner look
+    constexpr float WIRE_THICKNESS_NORMAL = 2.0f;
+    constexpr float WIRE_THICKNESS_SELECTED = 3.5f;
+    constexpr float WIRE_THICKNESS_PREVIEW = 2.0f;
     constexpr float WIRE_HOVER_TOLERANCE = 8.0f;
     constexpr float WIRE_HORIZONTAL_OFFSET = 10.0f;
 
@@ -104,14 +105,19 @@ namespace Config {
         const Color PALETTE_ITEM_SELECTED = {0x3c, 0x3c, 0x48, 0xff}; // Selected state
         const Color PALETTE_TEXT = {0xe0, 0xe0, 0xe6, 0xff};     // Soft white text
         const Color SELECTION_HIGHLIGHT = {0xff, 0xd7, 0x00, 0xff}; // Yellow highlight
-        const Color GRID_LINE = {0x38, 0x38, 0x42, 0x30};        // Very subtle grid lines
-        const Color GRID_DOT = {0x42, 0x42, 0x4e, 0x40};         // Subtle grid dots
+        const Color HOVER_HIGHLIGHT = {0x4a, 0x9e, 0xff, 0xff};     // Soft blue hover
+        // Make grid less obtrusive
+        const Color GRID_LINE = {0x38, 0x38, 0x42, 0x28};        // Very subtle grid lines
+        const Color GRID_DOT = {0x42, 0x42, 0x4e, 0x22};         // Subtle grid dots
+        const Color CANVAS_BG_TOP = {0x16, 0x16, 0x1b, 0xff};     // Canvas gradient top
+        const Color CANVAS_BG_BOTTOM = BACKGROUND;                // Canvas gradient bottom
 
         // Wire colors - subtle and elegant
         const Color WIRE_OFF = {0x5a, 0x5a, 0x66, 0xff};         // Muted gray
         const Color WIRE_ON = {0x4a, 0x9e, 0xff, 0xff};          // Soft blue active
         const Color WIRE_SELECTED = {0xff, 0x8a, 0x50, 0xff};    // Soft orange selection
         const Color WIRE_PREVIEW = {0x8b, 0x5a, 0xff, 0xff};     // Soft purple preview
+        const Color WIRE_HOVER = {0x6b, 0xb6, 0xff, 0xff};       // Hover wire color
         const Color WIRE_INVALID = {0xff, 0x6b, 0x6b, 0xff};     // Soft red error
 
         // Pin colors - sophisticated and clear

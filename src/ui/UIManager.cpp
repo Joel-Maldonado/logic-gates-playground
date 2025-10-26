@@ -1,5 +1,6 @@
 #include "ui/UIManager.h"
 #include "app/Config.h"
+#include "ui/VisualEffects.h"
 #include <raymath.h>
 #include <algorithm>
 #include <cmath>
@@ -17,6 +18,7 @@ UIManager::UIManager(std::shared_ptr<CircuitSimulator> sim)
       selectedWire_(nullptr),
       isDraggingComponent_(false),
       isDraggingWirePoint_(false),
+      isDragPending_(false),
       dragStartOffset_({0, 0}),
       clickedInputSource_(nullptr),
       dragStartPosition_({0, 0}) {
@@ -46,6 +48,14 @@ void UIManager::render() {
     BeginDrawing();
     ClearBackground(Config::Colors::BACKGROUND);
 
+    // Canvas background gradient (separates palette and world nicely)
+    Rectangle canvasRect = { Config::PALETTE_WIDTH, 0.0f,
+                             (float)GetScreenWidth() - Config::PALETTE_WIDTH,
+                             (float)GetScreenHeight() };
+    VisualEffects::drawRoundedRectangleGradient(canvasRect, 0.0f,
+                                                Config::Colors::CANVAS_BG_TOP,
+                                                Config::Colors::CANVAS_BG_BOTTOM);
+
     updateCamera();
 
     BeginMode2D(camera_);
@@ -53,6 +63,9 @@ void UIManager::render() {
     if (Config::GRID_ENABLED) {
         renderGrid();
     }
+
+    // Alignment guides while dragging components
+    renderDragAlignmentGuides();
 
     wireRenderer_->renderWires(simulator_->getWires());
 
@@ -92,9 +105,59 @@ void UIManager::render() {
 
     paletteManager_->render(camera_);
 
+    // Zoom and snap indicators (screen-space)
+    char hudText[64];
+    snprintf(hudText, sizeof(hudText), "Zoom: %d%%   Snap: %s", (int)(camera_.zoom * 100.0f),
+             gridSnapEnabled_ ? "On" : "Off");
+    DrawText(hudText, GetScreenWidth() - 260, GetScreenHeight() - 30, 18, Config::Colors::PALETTE_TEXT);
+
     DrawFPS(GetScreenWidth() - 90, 10);
 
     EndDrawing();
+}
+
+void UIManager::renderDragAlignmentGuides() {
+    if (!isDraggingComponent_ || !selectedComponent_) return;
+
+    const float SNAP_THRESHOLD = 15.0f;
+    const std::vector<Wire*>& associatedWires = selectedComponent_->getAssociatedWires();
+    if (associatedWires.empty()) return;
+
+    Vector2 gatePos = selectedComponent_->getPosition();
+    Color guideColor = Fade(Config::Colors::HOVER_HIGHLIGHT, 0.35f);
+    float thickness = 1.0f / std::max(0.8f, camera_.zoom); // keep thin at zoomed in
+
+    for (Wire* wire : associatedWires) {
+        if (!wire) continue;
+        GatePin* sourcePin = wire->getSourcePin();
+        GatePin* destPin = wire->getDestPin();
+        if (!sourcePin || !destPin) continue;
+
+        LogicGate* sourceGate = sourcePin->getParentGate();
+        LogicGate* destGate = destPin->getParentGate();
+        if (!sourceGate || !destGate) continue;
+
+        GatePin* thisGatePin = (selectedComponent_ == sourceGate) ? sourcePin : destPin;
+        GatePin* otherGatePin = (selectedComponent_ == sourceGate) ? destPin   : sourcePin;
+
+        Vector2 currentOffset = Vector2Subtract(thisGatePin->getAbsolutePosition(), selectedComponent_->getPosition());
+        Vector2 projectedPinPos = Vector2Add(gatePos, currentOffset);
+        Vector2 otherPinPos = otherGatePin->getAbsolutePosition();
+
+        // Horizontal guide
+        float yDiff = fabsf(projectedPinPos.y - otherPinPos.y);
+        if (yDiff < SNAP_THRESHOLD) {
+            DrawLineEx({projectedPinPos.x - 10000.0f, otherPinPos.y},
+                       {projectedPinPos.x + 10000.0f, otherPinPos.y}, thickness, guideColor);
+        }
+
+        // Vertical guide
+        float xDiff = fabsf(projectedPinPos.x - otherPinPos.x);
+        if (xDiff < SNAP_THRESHOLD) {
+            DrawLineEx({otherPinPos.x, projectedPinPos.y - 10000.0f},
+                       {otherPinPos.x, projectedPinPos.y + 10000.0f}, thickness, guideColor);
+        }
+    }
 }
 
 void UIManager::processInput() {
@@ -185,7 +248,10 @@ void UIManager::startDraggingComponent(LogicGate* component, Vector2 mousePos) {
     }
 
     selectComponent(component);
-    isDraggingComponent_ = true;
+    // Don't start dragging immediately; set as pending and only start
+    // if the cursor moves past a threshold (for less jumpy feel).
+    isDragPending_ = true;
+    isDraggingComponent_ = false;
     dragStartOffset_ = Vector2Subtract(mousePos, component->getPosition());
     dragStartPosition_ = mousePos;
 }
@@ -210,6 +276,18 @@ void UIManager::stopDragging() {
     }
 
     isDraggingComponent_ = false;
+    isDragPending_ = false;
+}
+
+void UIManager::tryStartDrag(Vector2 mousePos) {
+    if (!isDragPending_ || !selectedComponent_) return;
+    float dx = mousePos.x - dragStartPosition_.x;
+    float dy = mousePos.y - dragStartPosition_.y;
+    float distance = sqrtf(dx*dx + dy*dy);
+    if (distance > Config::DRAG_THRESHOLD) {
+        isDraggingComponent_ = true;
+        isDragPending_ = false;
+    }
 }
 
 bool UIManager::startDraggingWirePoint(Vector2 mousePos) {
@@ -296,20 +374,29 @@ void UIManager::renderGrid() {
     int majorEndX = ceil(screenBottomRight.x / majorGridSize) * majorGridSize;
     int majorEndY = ceil(screenBottomRight.y / majorGridSize) * majorGridSize;
 
+    // Zoom-adaptive visibility and thickness
+    float z = camera_.zoom;
+    float vis = std::max(0.2f, std::min(1.0f, (z - 0.5f) / (2.5f - 0.5f)));
+    Color majorColor = Fade(Config::Colors::GRID_LINE, vis);
+    float majorThickness = std::max(1.0f, Config::GRID_LINE_THICKNESS * (0.75f + 0.5f * z));
+
     for (float x = majorStartX; x <= majorEndX; x += majorGridSize) {
-        DrawLineV({x, screenTopLeft.y}, {x, screenBottomRight.y}, Config::Colors::GRID_LINE);
+        DrawLineEx({x, screenTopLeft.y}, {x, screenBottomRight.y}, majorThickness, majorColor);
     }
     for (float y = majorStartY; y <= majorEndY; y += majorGridSize) {
-        DrawLineV({screenTopLeft.x, y}, {screenBottomRight.x, y}, Config::Colors::GRID_LINE);
+        DrawLineEx({screenTopLeft.x, y}, {screenBottomRight.x, y}, majorThickness, majorColor);
     }
 
-    float dotSize = 1.5f / camera_.zoom;
-    dotSize = std::max(0.5f, std::min(2.0f, dotSize));
+    float dotSize = 1.0f / camera_.zoom;
+    dotSize = std::max(0.5f, std::min(1.2f, dotSize));
 
-    for (float x = startX; x <= endX; x += Config::GRID_SIZE) {
-        for (float y = startY; y <= endY; y += Config::GRID_SIZE) {
+    // Reduce dot density when zoomed out
+    float step = Config::GRID_SIZE * (z < 0.6f ? 3.0f : (z < 0.85f ? 2.0f : 1.0f));
+    for (float x = startX; x <= endX; x += step) {
+        for (float y = startY; y <= endY; y += step) {
             bool isMajorIntersection = (fmod(x, majorGridSize) == 0.0f && fmod(y, majorGridSize) == 0.0f);
-            Color dotColor = isMajorIntersection ? Config::Colors::GRID_LINE : Config::Colors::GRID_DOT;
+            Color baseColor = isMajorIntersection ? Config::Colors::GRID_LINE : Config::Colors::GRID_DOT;
+            Color dotColor = Fade(baseColor, vis);
             float currentDotSize = isMajorIntersection ? dotSize * 1.5f : dotSize;
 
             DrawCircleV({x, y}, currentDotSize, dotColor);
@@ -400,11 +487,19 @@ Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position)
     const float SNAP_THRESHOLD = 15.0f;
     const std::vector<Wire*>& associatedWires = gate->getAssociatedWires();
 
-    if (associatedWires.empty()) {
-        return position;
+    // Optional grid snap to keep movement tidy
+    Vector2 snapped = position;
+    if (gridSnapEnabled_) {
+        float gs = Config::GRID_SIZE;
+        snapped.x = roundf(snapped.x / gs) * gs;
+        snapped.y = roundf(snapped.y / gs) * gs;
     }
 
-    Vector2 adjustedPosition = position;
+    if (associatedWires.empty()) {
+        return snapped;
+    }
+
+    Vector2 adjustedPosition = snapped;
     bool hasSnapped = false;
 
     for (Wire* wire : associatedWires) {

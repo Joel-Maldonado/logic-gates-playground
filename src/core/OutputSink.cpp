@@ -1,6 +1,7 @@
 #include "core/OutputSink.h"
 #include "app/Config.h"
 #include <raylib.h>
+#include "ui/VisualEffects.h"
 #include <utility>
 
 namespace {
@@ -34,15 +35,26 @@ void OutputSink::draw() {
     Rectangle bounds = getBounds();
     Vector2 center = { bounds.x + radius_, bounds.y + radius_ };
 
-    // Draw main body
-    DrawCircleV(center, radius_, active_ ? style_.fillOn : style_.fillOff);
+    // Determine colors with higher contrast against dark theme
+    Color fillOff = VisualEffects::lerpColor(Config::Colors::GATE_FILL, WHITE, 0.15f);
+    Color outlineOff = VisualEffects::lerpColor(Config::Colors::GATE_OUTLINE, WHITE, 0.45f);
+    Color fillOn = Config::Colors::OUTPUT_ON;
+    Color outlineOn = VisualEffects::lerpColor(Config::Colors::GATE_OUTLINE, WHITE, 0.25f);
 
-    // Draw outline (thicker if selected)
+    Color fill = active_ ? fillOn : fillOff;
+    Color outline = active_ ? outlineOn : outlineOff;
+
+    // Draw main body
+    DrawCircleV(center, radius_, fill);
+
+    // Draw a ring outline for stronger separation
+    float ringInner = radius_ - 2.0f;
+    float ringOuter = radius_ + 0.0f;
     if (getIsSelected()) {
-        DrawCircleLines(center.x, center.y, radius_, SELECTION_COLOR);
-        DrawCircleLines(center.x, center.y, radius_ + Config::GATE_OUTLINE_THICKNESS, SELECTION_COLOR);
+        DrawRing(center, ringInner - 1.0f, ringOuter + 1.0f, 0.0f, 360.0f, 36, SELECTION_COLOR);
+        DrawRing(center, ringInner - 3.0f, ringInner - 1.0f, 0.0f, 360.0f, 36, Fade(SELECTION_COLOR, 0.6f));
     } else {
-        DrawCircleLines(center.x, center.y, radius_, style_.outlineColor);
+        DrawRing(center, ringInner, ringOuter, 0.0f, 360.0f, 36, outline);
     }
 
     // Draw label if present
@@ -61,8 +73,10 @@ void OutputSink::draw() {
         const GatePin* pin = getInputPin(0);
         if (pin) {
             Vector2 pinPos = pin->getAbsolutePosition();
-            DrawCircleV(pinPos, Config::CONNECTOR_PIN_RADIUS, active_ ? style_.fillOn : style_.fillOff);
-            DrawCircleLines(pinPos.x, pinPos.y, Config::CONNECTOR_PIN_RADIUS, style_.outlineColor);
+            Color pinFill = active_ ? fillOn : fillOff;
+            Color pinOutline = active_ ? outlineOn : outlineOff;
+            DrawCircleV(pinPos, Config::CONNECTOR_PIN_RADIUS - 1.0f, pinFill);
+            DrawRing(pinPos, Config::CONNECTOR_PIN_RADIUS - 1.5f, Config::CONNECTOR_PIN_RADIUS, 0.0f, 360.0f, 24, pinOutline);
         }
     }
 }

@@ -10,6 +10,9 @@ Application::Application()
 }
 
 void Application::initialize() {
+    // Enable multi-sample anti-aliasing for smoother visuals
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
+    // Keep window resizable
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, Config::WINDOW_TITLE);
     SetTargetFPS(Config::TARGET_FPS);

@@ -16,6 +16,27 @@ void GateRenderer::renderGates(const std::vector<std::unique_ptr<LogicGate>>& ga
         renderGate(gate.get());
 
         Vector2 mousePos = GetScreenToWorld2D(GetMousePosition(), camera);
+        // Subtle hover indicators (corner ticks) instead of a full rectangle border
+        if (gate->isMouseOver(mousePos) && !gate->getIsSelected()) {
+            Rectangle b = gate->getBounds();
+            float len = 12.0f;
+            float th = 2.0f;
+            Color hov = VisualEffects::lerpColor(Config::Colors::GATE_OUTLINE, WHITE, 0.6f);
+            hov.a = (unsigned char)(0.85f * 255);
+
+            // Top-left
+            DrawLineEx({b.x, b.y}, {b.x + len, b.y}, th, hov);
+            DrawLineEx({b.x, b.y}, {b.x, b.y + len}, th, hov);
+            // Top-right
+            DrawLineEx({b.x + b.width - len, b.y}, {b.x + b.width, b.y}, th, hov);
+            DrawLineEx({b.x + b.width, b.y}, {b.x + b.width, b.y + len}, th, hov);
+            // Bottom-left
+            DrawLineEx({b.x, b.y + b.height - len}, {b.x, b.y + b.height}, th, hov);
+            DrawLineEx({b.x, b.y + b.height}, {b.x + len, b.y + b.height}, th, hov);
+            // Bottom-right
+            DrawLineEx({b.x + b.width - len, b.y + b.height}, {b.x + b.width, b.y + b.height}, th, hov);
+            DrawLineEx({b.x + b.width, b.y + b.height - len}, {b.x + b.width, b.y + b.height}, th, hov);
+        }
         renderPinHighlights(gate.get(), mousePos, false, nullptr);
     }
 }
@@ -105,8 +126,9 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
                 fillColor = Config::Colors::INPUT_ON;
                 fillColorLight = Config::Colors::INPUT_ON;
             } else {
-                fillColor = Config::Colors::INPUT_OFF;
-                fillColorLight = Config::Colors::GATE_FILL_LIGHT;
+                // Higher contrast off-state body for visibility
+                fillColor = VisualEffects::lerpColor(Config::Colors::GATE_FILL, WHITE, 0.12f);
+                fillColorLight = VisualEffects::lerpColor(fillColor, WHITE, 0.06f);
             }
 
             Vector2 shadowOffset = {Config::SHADOW_OFFSET, Config::SHADOW_OFFSET};
@@ -121,10 +143,13 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
             DrawRectangleRounded(bounds, 0.3f, 8, fillColor);
 
             Color currentOutlineColor = outlineColor;
+            if (!isActive) {
+                currentOutlineColor = VisualEffects::lerpColor(Config::Colors::GATE_OUTLINE, WHITE, 0.35f);
+            }
             if (gate->getIsSelected()) {
                 currentOutlineColor = VisualEffects::lerpColor(outlineColor, Config::Colors::SELECTION_HIGHLIGHT, pulseValue);
             }
-            DrawRectangleRoundedLines(bounds, 0.3f, 8, currentOutlineColor);
+            DrawRectangleRoundedLines(bounds, 0.3f, 8, outlineThickness, currentOutlineColor);
             const char* stateText = isActive ? "1" : "0";
             float fontSize = Config::GATE_LABEL_FONT_SIZE * 1.5f;
             Vector2 textSize = MeasureTextEx(GetFontDefault(), stateText, fontSize, 1.0f);
@@ -161,8 +186,9 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
                 fillColor = Config::Colors::OUTPUT_ON;
                 fillColorLight = Config::Colors::OUTPUT_ON;
             } else {
-                fillColor = Config::Colors::OUTPUT_OFF;
-                fillColorLight = Config::Colors::GATE_FILL_LIGHT;
+                // Higher contrast off-state knob
+                fillColor = VisualEffects::lerpColor(Config::Colors::GATE_FILL, WHITE, 0.15f);
+                fillColorLight = VisualEffects::lerpColor(fillColor, WHITE, 0.08f);
             }
 
             Vector2 center = {
@@ -182,10 +208,14 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
             }
 
             Color currentOutlineColor = outlineColor;
+            if (!isActive) {
+                currentOutlineColor = VisualEffects::lerpColor(Config::Colors::GATE_OUTLINE, WHITE, 0.45f);
+            }
             if (gate->getIsSelected()) {
                 currentOutlineColor = VisualEffects::lerpColor(outlineColor, Config::Colors::SELECTION_HIGHLIGHT, pulseValue);
             }
-            DrawCircleLines(center.x, center.y, radius, currentOutlineColor);
+            // Use ring for stronger visual separation
+            DrawRing(center, radius - 2.0f, radius, 0.0f, 360.0f, 36, currentOutlineColor);
             const char* stateText = isActive ? "1" : "0";
             float fontSize = Config::GATE_LABEL_FONT_SIZE * 1.5f;
             Vector2 textSize = MeasureTextEx(GetFontDefault(), stateText, fontSize, 1.0f);
@@ -199,7 +229,9 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
                                                 Config::Colors::IO_TEXT, Config::Colors::GATE_SHADOW,
                                                 {1.0f, 1.0f});
             } else {
-                DrawTextEx(GetFontDefault(), stateText, textPos, fontSize, 1.0f, Config::Colors::IO_TEXT);
+                // Off-state text slightly dimmed but still legible
+                DrawTextEx(GetFontDefault(), stateText, textPos, fontSize, 1.0f,
+                           VisualEffects::lerpColor(Config::Colors::IO_TEXT, GRAY, 0.25f));
             }
 
             Vector2 labelSize = MeasureTextEx(GetFontDefault(), "OUT", Config::GATE_LABEL_FONT_SIZE, 1.0f);
@@ -214,23 +246,24 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
             return;
         }
         case GateType::AND:
-            fillColor = Config::Colors::AND_GATE;
-            fillColorLight = Config::Colors::AND_GATE_LIGHT;
+            // Use a consistent neutral fill for gate bodies per standard diagrams
+            fillColor = Config::Colors::GATE_FILL;
+            fillColorLight = Config::Colors::GATE_FILL_LIGHT;
             renderEnhancedGateSymbol(bounds, fillColor, fillColorLight, outlineColor, outlineThickness, pulseValue, gate->getIsSelected(), "AND");
             break;
         case GateType::OR:
-            fillColor = Config::Colors::OR_GATE;
-            fillColorLight = Config::Colors::OR_GATE_LIGHT;
+            fillColor = Config::Colors::GATE_FILL;
+            fillColorLight = Config::Colors::GATE_FILL_LIGHT;
             renderEnhancedGateSymbol(bounds, fillColor, fillColorLight, outlineColor, outlineThickness, pulseValue, gate->getIsSelected(), "OR");
             break;
         case GateType::XOR:
-            fillColor = Config::Colors::XOR_GATE;
-            fillColorLight = Config::Colors::XOR_GATE_LIGHT;
+            fillColor = Config::Colors::GATE_FILL;
+            fillColorLight = Config::Colors::GATE_FILL_LIGHT;
             renderEnhancedGateSymbol(bounds, fillColor, fillColorLight, outlineColor, outlineThickness, pulseValue, gate->getIsSelected(), "XOR");
             break;
         case GateType::NOT:
-            fillColor = Config::Colors::NOT_GATE;
-            fillColorLight = Config::Colors::NOT_GATE_LIGHT;
+            fillColor = Config::Colors::GATE_FILL;
+            fillColorLight = Config::Colors::GATE_FILL_LIGHT;
             renderEnhancedGateSymbol(bounds, fillColor, fillColorLight, outlineColor, outlineThickness, pulseValue, gate->getIsSelected(), "NOT");
             break;
         default:
@@ -242,6 +275,20 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
                       {bounds.x + 5.0f, bounds.y + 5.0f},
                       Config::GATE_LABEL_FONT_SIZE, 1.0f,
                       Config::Colors::GATE_TEXT);
+    }
+
+    // Draw compact gate type label above body for non-IO gates
+    if (type == GateType::AND || type == GateType::OR || type == GateType::XOR || type == GateType::NOT) {
+        const char* label = (type == GateType::AND) ? "AND" :
+                            (type == GateType::OR)  ? "OR"  :
+                            (type == GateType::XOR) ? "XOR" : "NOT";
+        float fontSize = Config::GATE_LABEL_FONT_SIZE * 0.9f;
+        Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
+        Vector2 labelPos = { bounds.x + (bounds.width - textSize.x) / 2.0f,
+                             bounds.y - textSize.y - 5.0f };
+        VisualEffects::drawTextWithShadow(label, labelPos, fontSize,
+                                          Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
+                                          {1.0f, 1.0f});
     }
 }
 
@@ -277,8 +324,20 @@ void GateRenderer::renderPin(const GatePin* pin, bool showLabel) const {
     bool isActive = pin->getState();
     Color pinColor = isActive ? Config::Colors::PIN_STATE_ON : Config::Colors::PIN_STATE_OFF;
 
-    DrawCircleV(pos, pin->getClickRadius(), pinColor);
-    DrawCircleLines(pos.x, pos.y, pin->getClickRadius(), Config::Colors::GATE_OUTLINE);
+    // Draw a crisp ring + inner fill for clearer pins
+    float outerR = pin->getClickRadius();
+    float ringThickness = 2.0f;
+    float innerR = std::max(outerR - ringThickness, 1.0f);
+
+    Color ringColor = Config::Colors::GATE_OUTLINE;
+    if (!isActive) {
+        // Make inactive pins more contrasty on dark backgrounds
+        ringColor = VisualEffects::lerpColor(Config::Colors::GATE_OUTLINE, WHITE, 0.55f);
+    }
+
+    DrawRing(pos, innerR, outerR, 0.0f, 360.0f, 32, ringColor);
+    Color innerColor = isActive ? pinColor : VisualEffects::lerpColor(pinColor, WHITE, 0.18f);
+    DrawCircleV(pos, innerR - 1.0f, innerColor);
 
     if (showLabel) {
         const char* stateText = pin->getState() ? "1" : "0";
@@ -302,7 +361,7 @@ void GateRenderer::renderPin(const GatePin* pin, bool showLabel) const {
 }
 
 void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
-    // AND gate: rectangle on left, semicircle on right
+    // AND gate: rectangle on left, semicircle on right (with subtle shadow)
     float actualWidth = bounds.width * Config::GATE_WIDTH_RATIO;
     float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
 
@@ -330,6 +389,18 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
 
     // Draw semicircle using triangular segments
     Vector2 semicircleCenter = {leftX + flatPartWidth, center.y};
+
+    // Shadow for semicircle
+    Vector2 shadowCenter = {semicircleCenter.x + shadowOffset.x, semicircleCenter.y + shadowOffset.y};
+    for (int i = 0; i < segments; i++) {
+        float startAngle = PI/2 - (i * PI / segments);
+        float endAngle = PI/2 - ((i + 1) * PI / segments);
+        Vector2 sp1 = shadowCenter;
+        Vector2 sp2 = { shadowCenter.x + radius * cosf(startAngle), shadowCenter.y + radius * sinf(startAngle) };
+        Vector2 sp3 = { shadowCenter.x + radius * cosf(endAngle),   shadowCenter.y + radius * sinf(endAngle) };
+        DrawTriangle(sp1, sp2, sp3, Config::Colors::GATE_SHADOW);
+    }
+
     for (int i = 0; i < segments; i++) {
         // Calculate angles for current segment (from top to bottom)
         float startAngle = PI/2 - (i * PI / segments);
@@ -368,15 +439,7 @@ void GateRenderer::renderAndGateSymbol(Rectangle bounds, Color fillColor, Color 
         DrawLineEx(p1, p2, outlineThickness, outlineColor);
     }
 
-    const char* label = "AND";
-    Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-    Vector2 textPos = {
-        leftX + (actualWidth - textSize.x) / 2.0f,
-        bounds.y + (bounds.height - textSize.y) / 2.0f
-    };
-    VisualEffects::drawTextWithShadow(label, textPos, Config::GATE_LABEL_FONT_SIZE,
-                                    Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
-                                    {1.0f, 1.0f});
+    // No gate label inside the shape; shown above instead
 }
 
 void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
@@ -415,15 +478,7 @@ void GateRenderer::renderOrGateSymbol(Rectangle bounds, Color fillColor, Color o
     DrawLineEx(curvePoints[0], rightPoint, outlineThickness, outlineColor);
     DrawLineEx(curvePoints[segments], rightPoint, outlineThickness, outlineColor);
 
-    const char* label = "OR";
-    Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-    float centerX = leftX + actualWidth * 0.4f;
-    Vector2 textPos = {
-        centerX - textSize.x / 2.0f,
-        bounds.y + (bounds.height - textSize.y) / 2.0f
-    };
-
-    DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
+    // Label drawn above; keep symbol clean
 }
 
 void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
@@ -450,16 +505,7 @@ void GateRenderer::renderXorGateSymbol(Rectangle bounds, Color fillColor, Color 
         prevPoint = point;
     }
 
-    const char* label = "XOR";
-    Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-    float centerX = leftX + actualWidth * 0.4f;
-    Vector2 textPos = {
-        centerX - textSize.x / 2.0f,
-        bounds.y + (bounds.height - textSize.y) / 2.0f
-    };
-
-    // Draw XOR text
-    DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
+    // Label drawn above; keep symbol clean
 }
 
 void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
@@ -497,16 +543,7 @@ void GateRenderer::renderNotGateSymbol(Rectangle bounds, Color fillColor, Color 
     // Draw circle outline with matching thickness
     DrawRing(circleCenter, circleRadius - outlineThickness/2.0f, circleRadius + outlineThickness/2.0f, 0.0f, 360.0f, 32, outlineColor);
 
-    // Draw gate label centered at 40% from left edge
-    const char* label = "NOT";
-    Vector2 textSize = MeasureTextEx(GetFontDefault(), label, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-    float centerX = leftX + actualWidth * 0.4f;
-    Vector2 textPos = {
-        centerX - textSize.x / 2.0f,
-        bounds.y + (bounds.height - textSize.y) / 2.0f
-    };
-
-    DrawTextEx(GetFontDefault(), label, textPos, Config::GATE_LABEL_FONT_SIZE, 1.0f, Config::Colors::GATE_TEXT);
+    // Label drawn above; keep symbol clean
 }
 
 void GateRenderer::renderWirePreview(const GatePin* startPin,
@@ -607,24 +644,7 @@ void GateRenderer::renderTriangularOrGateSymbol(Rectangle bounds, Color fillColo
     // Draw the OR gate shape
     renderTriangularOrGateShape(bounds, fillColor, outlineColor, outlineThickness);
 
-    // Draw gate label centered at 50% from left edge for better positioning in triangular shape
-    Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
-    float triangleHeight = bounds.height;
-    float idealWidth = triangleHeight * 0.876f;
-    float actualWidth = fminf(bounds.width * 0.8f, idealWidth);
-    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
-
-    const char* label = "OR";
-    float fontSize = Config::GATE_LABEL_FONT_SIZE * Config::GATE_FONT_SIZE_RATIO; // Slightly smaller font for better fit
-    Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
-    float centerX = leftX + actualWidth * 0.5f;
-    Vector2 textPos = {
-        centerX - textSize.x / 2.0f,
-        center.y - textSize.y / 2.0f
-    };
-    VisualEffects::drawTextWithShadow(label, textPos, fontSize,
-                                    Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
-                                    {1.0f, 1.0f});
+    // No inner label; label rendered above in renderGateBody
 }
 
 void GateRenderer::renderTriangularXorGateShape(Rectangle bounds, Color fillColor, Color outlineColor, float outlineThickness) const {
@@ -717,24 +737,7 @@ void GateRenderer::renderTriangularXorGateSymbol(Rectangle bounds, Color fillCol
     // Draw the XOR gate shape
     renderTriangularXorGateShape(bounds, fillColor, outlineColor, outlineThickness);
 
-    // Draw gate label centered at 50% from left edge for better positioning in triangular shape
-    Vector2 center = {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
-    float triangleHeight = bounds.height;
-    float idealWidth = triangleHeight * 0.866f;
-    float actualWidth = fminf(bounds.width * 0.8f, idealWidth);
-    float leftX = bounds.x + (bounds.width - actualWidth) / 2.0f;
-
-    const char* label = "XOR";
-    float fontSize = Config::GATE_LABEL_FONT_SIZE * Config::GATE_FONT_SIZE_RATIO; // Slightly smaller font for better fit
-    Vector2 textSize = MeasureTextEx(GetFontDefault(), label, fontSize, 1.0f);
-    float centerX = leftX + actualWidth * 0.5f;
-    Vector2 textPos = {
-        centerX - textSize.x / 2.0f,
-        center.y - textSize.y / 2.0f
-    };
-    VisualEffects::drawTextWithShadow(label, textPos, fontSize,
-                                    Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
-                                    {1.0f, 1.0f});
+    // No inner label; label rendered above in renderGateBody
 }
 
 void GateRenderer::renderEnhancedGateSymbol(Rectangle bounds, Color fillColor, Color fillColorLight,
@@ -756,24 +759,11 @@ void GateRenderer::renderEnhancedGateSymbol(Rectangle bounds, Color fillColor, C
     } else if (strcmp(gateType, "NOT") == 0) {
         renderNotGateSymbol(bounds, fillColor, currentOutlineColor, outlineThickness);
     } else {
-        // Fallback to rounded rectangle with potential gradient effect
+        // Fallback: rounded rectangle without inner text; label drawn above
         DrawRectangleRounded(bounds, 0.2f, 8, fillColor);
-        DrawRectangleRoundedLines(bounds, 0.2f, 8, currentOutlineColor);
-
-        // Draw enhanced text
-        Vector2 textSize = MeasureTextEx(GetFontDefault(), gateType, Config::GATE_LABEL_FONT_SIZE, 1.0f);
-        Vector2 textPos = {
-            bounds.x + (bounds.width - textSize.x) / 2.0f,
-            bounds.y + (bounds.height - textSize.y) / 2.0f
-        };
-        VisualEffects::drawTextWithShadow(gateType, textPos, Config::GATE_LABEL_FONT_SIZE,
-                                        Config::Colors::GATE_TEXT, Config::Colors::GATE_SHADOW,
-                                        {1.0f, 1.0f});
+        DrawRectangleRoundedLines(bounds, 0.2f, 8, outlineThickness, currentOutlineColor);
     }
 
-    // Note: fillColorLight parameter is available for future gradient enhancements
-    // Currently not used as the specific gate symbols don't implement gradient fills
-    (void)fillColorLight; // Suppress unused parameter warning for now
+    // Note: fillColorLight reserved for future gradients
+    (void)fillColorLight; // Suppress unused parameter warning
 }
-
-

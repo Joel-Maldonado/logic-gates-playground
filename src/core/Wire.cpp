@@ -80,6 +80,10 @@ void Wire::draw() const {
         if (isSelected) {
             wireColorToUse = Style::selected;
             thickness = Config::WIRE_THICKNESS_SELECTED;
+        } else if (isHovered_) {
+            // Subtle hover accent without overwhelming the scene
+            wireColorToUse = VisualEffects::lerpColor(wireColorToUse, Config::Colors::WIRE_HOVER, 0.35f);
+            thickness += 0.5f;
         }
 
         drawEnhancedWirePath(controlPoints_, wireColorToUse, thickness);
@@ -107,7 +111,8 @@ void Wire::draw() const {
                             // Interpolate position within current segment
                             float t = (targetDistance - currentDistance) / segmentLengths[i];
                             Vector2 position = Vector2Lerp(controlPoints_[i], controlPoints_[i + 1], t);
-                            DrawCircleV(position, 3.0f, Config::Colors::WIRE_ON);
+                            VisualEffects::drawCircleWithGlow(position, 3.0f, Config::Colors::WIRE_ON,
+                                                             Fade(Config::Colors::WIRE_ON, 0.35f), 6.0f);
                             break;
                         }
                         currentDistance += segmentLengths[i];
@@ -164,8 +169,23 @@ void Wire::drawEnhancedWirePath(const std::vector<Vector2>& points, Color color,
         return;
     }
 
+    // Draw segments with optional glow for active/selected/hovered wires
+    bool glow = state_ || isSelected || isHovered_;
     for (size_t i = 0; i < points.size() - 1; i++) {
-        DrawLineEx(points[i], points[i + 1], thickness, color);
+        if (glow) {
+            Color glowColor = Fade(color, 0.35f);
+            VisualEffects::drawLineWithGlow(points[i], points[i + 1], thickness, color, glowColor, thickness * 1.75f);
+        } else {
+            DrawLineEx(points[i], points[i + 1], thickness, color);
+        }
+    }
+
+    // Soften elbows by drawing small round joints
+    if (points.size() > 2) {
+        float jointRadius = std::max(thickness * 0.6f, 1.0f);
+        for (size_t i = 1; i < points.size() - 1; i++) {
+            DrawCircleV(points[i], jointRadius, color);
+        }
     }
 
     if (points.size() >= 2) {
@@ -174,8 +194,11 @@ void Wire::drawEnhancedWirePath(const std::vector<Vector2>& points, Color color,
         float distance = Vector2Distance(lastSegmentStart, lastSegmentEnd);
 
         if (distance > 30.0f) {
-            bool isActive = state_ && !isSelected;
-            float t = 0.5f;  // Static position at 50% along the wire segment
+            // Only draw direction indicator when the wire is active or selected to reduce visual noise
+            bool showArrow = (state_ && !isSelected) || isSelected;
+            if (!showArrow) return;
+
+            float t = isSelected ? 0.6f : 0.5f;  // Slightly offset when selected
 
             Vector2 arrowPos = {
                 lastSegmentStart.x + t * (lastSegmentEnd.x - lastSegmentStart.x),
@@ -185,7 +208,7 @@ void Wire::drawEnhancedWirePath(const std::vector<Vector2>& points, Color color,
             Vector2 dir = Vector2Normalize(Vector2Subtract(lastSegmentEnd, lastSegmentStart));
             Vector2 perp = { -dir.y, dir.x };
 
-            float arrowSize = isActive ? 9.0f : 8.0f;
+            float arrowSize = isSelected ? 9.0f : 8.0f;
             Vector2 arrowTip = Vector2Add(arrowPos, Vector2Scale(dir, arrowSize));
             Vector2 arrowLeft = Vector2Subtract(arrowPos, Vector2Scale(perp, arrowSize * 0.5f));
             Vector2 arrowRight = Vector2Add(arrowPos, Vector2Scale(perp, arrowSize * 0.5f));

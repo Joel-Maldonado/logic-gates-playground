@@ -42,9 +42,11 @@ private:
     Wire* selectedWire_;
     bool isDraggingComponent_;
     bool isDraggingWirePoint_;
+    bool isDragPending_;
     Vector2 dragStartOffset_;
     InputSource* clickedInputSource_;
     Vector2 dragStartPosition_;
+    bool gridSnapEnabled_ = false;
 
 public:
     UIManager(std::shared_ptr<CircuitSimulator> sim);
@@ -77,6 +79,9 @@ public:
     void startDraggingComponent(LogicGate* component, Vector2 mousePos);
     void updateDragging(Vector2 mousePos);
     void stopDragging();
+    void tryStartDrag(Vector2 mousePos);
+    bool isDraggingComponentActive() const { return isDraggingComponent_; }
+    bool isDragPendingActive() const { return isDragPending_; }
 
     // Wire point dragging operations
     bool startDraggingWirePoint(Vector2 mousePos);
@@ -97,11 +102,14 @@ public:
 
     // Camera and rendering utilities
     void renderGrid();
+    void renderDragAlignmentGuides();
     void startPanning(Vector2 mousePos);
     void updatePanning(Vector2 mousePos);
     void stopPanning();
     void updateCamera();
     bool isPanningActive() const;
+    bool isGridSnapEnabled() const { return gridSnapEnabled_; }
+    void toggleGridSnap() { gridSnapEnabled_ = !gridSnapEnabled_; }
 
     // Wire and component utilities
     void updateWirePathsForComponent(LogicGate* component);

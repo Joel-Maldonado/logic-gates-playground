@@ -14,10 +14,13 @@ endif()
 find_package(raylib QUIET)
 if (NOT raylib_FOUND)
     include(FetchContent)
+    # Ensure compatibility with raylib's older CMake minimums on newer CMake versions
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
     FetchContent_Declare(
         raylib
         GIT_REPOSITORY https://github.com/raysan5/raylib.git
-        GIT_TAG 5.0.0
+        # Use official tag name (5.0)
+        GIT_TAG 5.0
     )
     FetchContent_MakeAvailable(raylib)
 endif()

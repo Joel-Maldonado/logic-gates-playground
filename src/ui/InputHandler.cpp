@@ -11,8 +11,43 @@ void InputHandler::processInput() {
     Vector2 rawMousePos = GetMousePosition();
     Vector2 worldMousePos = GetScreenToWorld2D(rawMousePos, uiManager_->getCamera());
 
+    // Mouse wheel zoom (simple, clamped)
+    float wheel = GetMouseWheelMove();
+    if (wheel != 0.0f) {
+        Camera2D& cam = uiManager_->getCamera();
+        // Zoom towards mouse position
+        Vector2 mouseWorldBefore = GetScreenToWorld2D(rawMousePos, cam);
+        cam.zoom += wheel * 0.1f;
+        if (cam.zoom < 0.5f) cam.zoom = 0.5f;
+        if (cam.zoom > 2.5f) cam.zoom = 2.5f;
+        Vector2 mouseWorldAfter = GetScreenToWorld2D(rawMousePos, cam);
+        // Keep the point under the mouse stable while zooming
+        Vector2 delta = { mouseWorldBefore.x - mouseWorldAfter.x, mouseWorldBefore.y - mouseWorldAfter.y };
+        cam.target.x += delta.x;
+        cam.target.y += delta.y;
+    }
+
     if (uiManager_->getSelectedComponent() && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        uiManager_->updateDragging(worldMousePos);
+        // Only begin actual dragging once threshold is exceeded
+        uiManager_->tryStartDrag(worldMousePos);
+        if (uiManager_->isDraggingComponentActive()) {
+            uiManager_->updateDragging(worldMousePos);
+        }
+    }
+
+    // Update wire hover feedback each frame
+    {
+        Wire* hovered = nullptr;
+        for (const auto& wire : simulator_->getWires()) {
+            wire->setHovered(false);
+        }
+        for (const auto& wire : simulator_->getWires()) {
+            if (wire->isMouseOver(worldMousePos, Config::WIRE_HOVER_TOLERANCE)) {
+                hovered = wire.get();
+                hovered->setHovered(true);
+                break;
+            }
+        }
     }
 
     if (uiManager_->isDraggingWirePointActive() && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
@@ -60,6 +95,13 @@ void InputHandler::processInput() {
         }
 
         handleLeftMouseButtonRelease(worldMousePos);
+        // If wire drawing is active but release wasn't over an input pin, cancel it
+        if (uiManager_->isDrawingWireActive()) {
+            GatePin* endPin = findPinUnderMouse(worldMousePos);
+            if (!(endPin && endPin->getType() == PinType::INPUT_PIN && !endPin->isConnectedInput())) {
+                uiManager_->cancelWireDrawing();
+            }
+        }
     }
 
     if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) || IsKeyPressed(KEY_ESCAPE)) {
@@ -74,6 +116,27 @@ void InputHandler::processInput() {
     }
 
     handleKeyboardInput();
+
+    // Contextual cursor feedback to improve perceived responsiveness
+    // Priority: panning/dragging > wire-drawing > pin-hover > palette > default
+    if (uiManager_->isPanningActive() || uiManager_->isDraggingComponentActive()) {
+        SetMouseCursor(MOUSE_CURSOR_RESIZE_ALL);
+    } else if (uiManager_->isDrawingWireActive()) {
+        SetMouseCursor(MOUSE_CURSOR_CROSSHAIR);
+    } else {
+        bool overPin = (findPinUnderMouse(worldMousePos) != nullptr);
+        bool overWire = false;
+        for (const auto& wire : simulator_->getWires()) {
+            if (wire->isMouseOver(worldMousePos, Config::WIRE_HOVER_TOLERANCE)) { overWire = true; break; }
+        }
+        Rectangle paletteBounds = uiManager_->getPaletteManager().getPaletteBounds();
+        bool overPalette = CheckCollisionPointRec(rawMousePos, paletteBounds);
+        if (overPin || overWire || overPalette || uiManager_->getPaletteManager().isDraggingGateActive()) {
+            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+        } else {
+            SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+        }
+    }
 }
 
 void InputHandler::handleLeftMouseButtonPress(Vector2 rawMousePos, Vector2 worldMousePos) {
@@ -156,6 +219,10 @@ void InputHandler::handleRightMouseButtonPress() {
 void InputHandler::handleKeyboardInput() {
     if (IsKeyPressed(KEY_DELETE) || IsKeyPressed(KEY_BACKSPACE)) {
         uiManager_->deleteSelected();
+    }
+    // Toggle grid snapping to tidy movement
+    if (IsKeyPressed(KEY_G)) {
+        uiManager_->toggleGridSnap();
     }
 }
 

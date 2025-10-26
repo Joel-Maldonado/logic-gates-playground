@@ -84,11 +84,11 @@ void PaletteManager::render(const Camera2D& camera) {
                 item.bounds.width + 4.0f, item.bounds.height + 4.0f
             };
             DrawRectangleRounded(expandedBounds, 0.3f, 8, glowColor);
-            DrawRectangleRoundedLines(item.bounds, 0.3f, 8, Config::Colors::SELECTION_HIGHLIGHT);
+            DrawRectangleRoundedLines(item.bounds, 0.3f, 8, 1.0f, Config::Colors::SELECTION_HIGHLIGHT);
         } else if (isHovered) {
-            DrawRectangleRoundedLines(item.bounds, 0.3f, 8, Config::Colors::PRIMARY_VARIANT);
+            DrawRectangleRoundedLines(item.bounds, 0.3f, 8, 1.0f, Config::Colors::TERTIARY);
         } else {
-            DrawRectangleRoundedLines(item.bounds, 0.3f, 8, Config::Colors::GATE_OUTLINE);
+            DrawRectangleRoundedLines(item.bounds, 0.3f, 8, 1.0f, Config::Colors::GATE_OUTLINE);
         }
 
         // Draw gate icon
@@ -114,10 +114,10 @@ void PaletteManager::render(const Camera2D& camera) {
     }
 
     // Draw instructions at the bottom with more space and updated controls
-    DrawRectangle(0, GetScreenHeight() - 80, Config::PALETTE_WIDTH, 80, Fade(BLACK, 0.5f));
-    DrawText("Drag: Place", 10, GetScreenHeight() - 70, 18, LIGHTGRAY);
-    DrawText("Middle/Right: Pan", 10, GetScreenHeight() - 50, 18, LIGHTGRAY);
-    DrawText("Backspace: Remove", 10, GetScreenHeight() - 30, 18, LIGHTGRAY);
+    DrawRectangle(0, GetScreenHeight() - 80, Config::PALETTE_WIDTH, 80, Config::Colors::SURFACE_VARIANT);
+    DrawText("Drag: Place", 10, GetScreenHeight() - 70, 18, Config::Colors::PALETTE_TEXT);
+    DrawText("Middle/Right: Pan", 10, GetScreenHeight() - 50, 18, Config::Colors::PALETTE_TEXT);
+    DrawText("Backspace: Remove", 10, GetScreenHeight() - 30, 18, Config::Colors::PALETTE_TEXT);
 
     // Draw gate preview if dragging
     if (isDraggingGate_ && draggedGateType_ != GateType::NONE) {
@@ -342,7 +342,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
         case GateType::INPUT_SOURCE:
             // Draw a square for input
             DrawRectangleRounded(bounds, 0.3f, 4, color);
-            DrawRectangleRoundedLines(bounds, 0.3f, 4, BLACK);
+            DrawRectangleRoundedLines(bounds, 0.3f, 4, 1.0f, Config::Colors::GATE_OUTLINE);
             break;
 
         case GateType::OUTPUT_SINK:
@@ -351,7 +351,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
                 Vector2 center = {bounds.x + bounds.width/2, bounds.y + bounds.height/2};
                 float radius = bounds.width/2 - 2;
                 DrawCircleV(center, radius, color);
-                DrawCircleLines(center.x, center.y, radius, BLACK);
+                DrawCircleLines(center.x, center.y, radius, Config::Colors::GATE_OUTLINE);
             }
             break;
 
@@ -395,13 +395,13 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
 
                 // Draw the outline
                 // Left vertical line
-                DrawLineEx({bounds.x, bounds.y}, {bounds.x, bounds.y + bounds.height}, 1.0f, BLACK);
+                DrawLineEx({bounds.x, bounds.y}, {bounds.x, bounds.y + bounds.height}, 1.0f, Config::Colors::GATE_OUTLINE);
 
                 // Top horizontal line to semicircle
-                DrawLineEx({bounds.x, bounds.y}, {center.x, bounds.y}, 1.0f, BLACK);
+                DrawLineEx({bounds.x, bounds.y}, {center.x, bounds.y}, 1.0f, Config::Colors::GATE_OUTLINE);
 
                 // Bottom horizontal line to semicircle
-                DrawLineEx({bounds.x, bounds.y + bounds.height}, {center.x, bounds.y + bounds.height}, 1.0f, BLACK);
+                DrawLineEx({bounds.x, bounds.y + bounds.height}, {center.x, bounds.y + bounds.height}, 1.0f, Config::Colors::GATE_OUTLINE);
 
                 // Draw the semicircle outline using line segments
                 for (int i = 0; i < segments; i++) {
@@ -417,7 +417,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
                         center.y + radius * sinf(endAngle)
                     };
 
-                    DrawLineEx(p1, p2, 1.0f, BLACK);
+                    DrawLineEx(p1, p2, 1.0f, Config::Colors::GATE_OUTLINE);
                 }
             }
             break;
@@ -460,12 +460,12 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
 
                 // Draw the curved left side outline
                 for (int i = 0; i < segments; i++) {
-                    DrawLineEx(curvePoints[i], curvePoints[i+1], 1.0f, BLACK);
+                    DrawLineEx(curvePoints[i], curvePoints[i+1], 1.0f, Config::Colors::GATE_OUTLINE);
                 }
 
                 // Draw the straight lines from curve endpoints to the right point
-                DrawLineEx(curvePoints[0], rightPoint, 1.0f, BLACK);
-                DrawLineEx(curvePoints[segments], rightPoint, 1.0f, BLACK);
+                DrawLineEx(curvePoints[0], rightPoint, 1.0f, Config::Colors::GATE_OUTLINE);
+                DrawLineEx(curvePoints[segments], rightPoint, 1.0f, Config::Colors::GATE_OUTLINE);
             }
             break;
 
@@ -508,12 +508,12 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
 
                 // Draw the curved left side outline
                 for (int i = 0; i < segments; i++) {
-                    DrawLineEx(curvePoints[i], curvePoints[i+1], 1.0f, BLACK);
+                    DrawLineEx(curvePoints[i], curvePoints[i+1], 1.0f, Config::Colors::GATE_OUTLINE);
                 }
 
                 // Draw the straight lines from curve endpoints to the right point
-                DrawLineEx(curvePoints[0], rightPoint, 1.0f, BLACK);
-                DrawLineEx(curvePoints[segments], rightPoint, 1.0f, BLACK);
+                DrawLineEx(curvePoints[0], rightPoint, 1.0f, Config::Colors::GATE_OUTLINE);
+                DrawLineEx(curvePoints[segments], rightPoint, 1.0f, Config::Colors::GATE_OUTLINE);
 
                 // Draw the second curved line (XOR's distinctive double-curve)
                 Vector2 prevPoint = {leftX - curveOffset, bounds.y}; // Top point of second curve
@@ -530,7 +530,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
                     Vector2 point = {x, y};
 
                     // Draw line segment of the curve
-                    DrawLineEx(prevPoint, point, 1.0f, BLACK);
+                    DrawLineEx(prevPoint, point, 1.0f, Config::Colors::GATE_OUTLINE);
                     prevPoint = point;
                 }
             }
@@ -559,14 +559,14 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
                 DrawTriangle(points[0], points[1], points[2], color);
 
                 // Draw outline
-                DrawLineEx(points[0], points[1], 1.0f, BLACK);
-                DrawLineEx(points[1], points[2], 1.0f, BLACK);
-                DrawLineEx(points[2], points[0], 1.0f, BLACK);
+                DrawLineEx(points[0], points[1], 1.0f, Config::Colors::GATE_OUTLINE);
+                DrawLineEx(points[1], points[2], 1.0f, Config::Colors::GATE_OUTLINE);
+                DrawLineEx(points[2], points[0], 1.0f, Config::Colors::GATE_OUTLINE);
 
                 // NOT bubble - position it right at the triangle tip
                 Vector2 bubblePos = {leftX + actualWidth + bubbleRadius, bounds.y + bounds.height/2};
                 DrawCircleV(bubblePos, bubbleRadius, color);
-                DrawCircleLines(bubblePos.x, bubblePos.y, bubbleRadius, BLACK);
+                DrawCircleLines(bubblePos.x, bubblePos.y, bubbleRadius, Config::Colors::GATE_OUTLINE);
             }
             break;
 
@@ -579,7 +579,7 @@ void PaletteManager::drawGateIcon(GateType type, Rectangle bounds, Color color) 
         default:
             // Draw a generic rectangle
             DrawRectangleRec(bounds, color);
-            DrawRectangleLinesEx(bounds, 1.0f, BLACK);
+            DrawRectangleLinesEx(bounds, 1.0f, Config::Colors::GATE_OUTLINE);
             break;
     }
 }

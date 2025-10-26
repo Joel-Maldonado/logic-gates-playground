@@ -24,7 +24,8 @@ void WireRenderer::renderWire(const Wire* wire) {
 
 void WireRenderer::renderWirePreview(Vector2 startPos, Vector2 endPos, bool isDestInput, Color color, float thickness) {
     std::vector<Vector2> path = calculatePreviewPath(startPos, endPos, isDestInput);
-    renderWirePathPreview(path, color, thickness);
+    Color previewColor = isDestInput ? Config::Colors::PIN_VALID_CONNECTION : color;
+    renderWirePathPreview(path, previewColor, thickness);
 }
 
 void WireRenderer::renderWirePathPreview(const std::vector<Vector2>& path, Color color, float thickness) {
@@ -35,6 +36,14 @@ void WireRenderer::renderWirePathPreview(const std::vector<Vector2>& path, Color
     // Draw line segments without glow effect
     for (size_t i = 0; i < path.size() - 1; i++) {
         DrawLineEx(path[i], path[i + 1], thickness, color);
+    }
+
+    // Round elbows for a cleaner preview
+    if (path.size() > 2) {
+        float jointRadius = std::max(thickness * 0.6f, 1.0f);
+        for (size_t i = 1; i < path.size() - 1; i++) {
+            DrawCircleV(path[i], jointRadius, color);
+        }
     }
 
     // Add animated direction arrow if the last segment is long enough

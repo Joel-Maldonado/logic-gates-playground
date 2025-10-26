@@ -27,6 +27,7 @@ private:
     std::vector<Vector2> controlPoints_;
     bool isDraggingPoint_;
     int draggedPointIndex_;
+    bool isHovered_ = false;
 
 public:
     /**
@@ -57,6 +58,8 @@ public:
     void setSelected(bool selected);
     bool getIsSelected() const;
     bool isMouseOver(Vector2 mousePos, float tolerance = 2.0f) const;
+    void setHovered(bool hovered) { isHovered_ = hovered; }
+    bool getIsHovered() const { return isHovered_; }
 
     // Property getters
     GatePin* getSourcePin() const;
