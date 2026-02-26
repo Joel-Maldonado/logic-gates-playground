@@ -10,6 +10,15 @@
 
 class Wire;
 
+enum class GateKind {
+    INPUT_SOURCE,
+    OUTPUT_SINK,
+    AND_GATE,
+    OR_GATE,
+    XOR_GATE,
+    NOT_GATE
+};
+
 /**
  * Abstract base class for all logic gates in the circuit simulator.
  * Provides common functionality for gate positioning, pin management,
@@ -18,6 +27,7 @@ class Wire;
 class LogicGate {
 protected:
     std::string id_;
+    GateKind gateKind_;
     Vector2 position_;
     float width_;
     float height_;
@@ -36,7 +46,7 @@ public:
      * @param w Width of the gate
      * @param h Height of the gate
      */
-    LogicGate(std::string gateId, Vector2 pos, float w, float h);
+    LogicGate(std::string gateId, GateKind kind, Vector2 pos, float w, float h);
     virtual ~LogicGate();
 
     /**
@@ -45,14 +55,8 @@ public:
      */
     virtual void evaluate() = 0;
 
-    /**
-     * Renders the gate to the screen.
-     * Must be implemented by derived classes.
-     */
-    virtual void draw() = 0;
-
-    /** Updates the gate state if marked as dirty */
-    void update();
+    /** Updates the gate state if marked as dirty; returns true when output pins changed */
+    bool update();
 
     /** Marks the gate for re-evaluation on next update */
     void markDirty();
@@ -101,6 +105,7 @@ public:
 
     // Property getters
     std::string getId() const;
+    GateKind getKind() const;
     float getWidth() const;
     float getHeight() const;
 

@@ -8,18 +8,34 @@
 #include <iostream>
 #include <set>
 
-LogicGate::LogicGate(std::string gateId, Vector2 pos, float w, float h)
-    : id_(std::move(gateId)), position_(pos), width_(w), height_(h), isDirty_(true), isSelected_(false) {
+LogicGate::LogicGate(std::string gateId, GateKind kind, Vector2 pos, float w, float h)
+    : id_(std::move(gateId)), gateKind_(kind), position_(pos), width_(w), height_(h), isDirty_(true), isSelected_(false) {
 }
 
 LogicGate::~LogicGate() {
 }
 
-void LogicGate::update() {
-    if (isDirty_) {
-        evaluate();
-        isDirty_ = false;
+bool LogicGate::update() {
+    if (!isDirty_) {
+        return false;
     }
+
+    std::vector<bool> previousOutputs;
+    previousOutputs.reserve(outputPins_.size());
+    for (const auto& pin : outputPins_) {
+        previousOutputs.push_back(pin.getState());
+    }
+
+    evaluate();
+    isDirty_ = false;
+
+    for (size_t i = 0; i < outputPins_.size(); ++i) {
+        if (outputPins_[i].getState() != previousOutputs[i]) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void LogicGate::markDirty() {
@@ -131,6 +147,10 @@ bool LogicGate::getIsSelected() const {
 
 std::string LogicGate::getId() const {
     return id_;
+}
+
+GateKind LogicGate::getKind() const {
+    return gateKind_;
 }
 
 float LogicGate::getWidth() const {

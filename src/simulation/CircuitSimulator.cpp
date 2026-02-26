@@ -1,24 +1,61 @@
 #include "simulation/CircuitSimulator.h"
 #include <algorithm>
-#include <iostream>
+#include <raylib.h>
 
-CircuitSimulator::CircuitSimulator() : nextGateId_(0) {
+CircuitSimulator::CircuitSimulator()
+    : nextGateId_(0),
+      lastStats_({0, true, false}) {
 }
 
-void CircuitSimulator::update() {
-    // Update wire states first to propagate signals
-    for (const auto& wire : wires_) {
-        wire->update();
+CircuitSimulator::SimulationStats CircuitSimulator::update() {
+    SimulationStats stats = {0, true, false};
+
+    if (gates_.empty() && wires_.empty()) {
+        lastStats_ = stats;
+        return stats;
     }
 
-    // Update gates twice to handle multi-level logic propagation
-    for (const auto& gate : gates_) {
-        gate->update();
+    bool stable = false;
+
+    for (int pass = 1; pass <= MAX_SIMULATION_PASSES; ++pass) {
+        bool anyWireChanged = false;
+        bool anyGateChanged = false;
+
+        // Update wires first to propagate source changes to destination gates.
+        for (const auto& wire : wires_) {
+            anyWireChanged = wire->update() || anyWireChanged;
+        }
+
+        for (const auto& gate : gates_) {
+            if (gate->needsEvaluation()) {
+                anyGateChanged = gate->update() || anyGateChanged;
+            }
+        }
+
+        bool hasDirtyGates = false;
+        for (const auto& gate : gates_) {
+            if (gate->needsEvaluation()) {
+                hasDirtyGates = true;
+                break;
+            }
+        }
+
+        stats.passes = pass;
+
+        if (!anyWireChanged && !anyGateChanged && !hasDirtyGates) {
+            stable = true;
+            break;
+        }
     }
 
-    for (const auto& gate : gates_) {
-        gate->update();
+    if (!stable) {
+        stats.stable = false;
+        stats.oscillating = true;
+        TraceLog(LOG_WARNING, "Simulation reached max passes (%d); circuit may be oscillating", MAX_SIMULATION_PASSES);
     }
+
+    lastStats_ = stats;
+    return stats;
 }
 
 LogicGate* CircuitSimulator::addGate(std::unique_ptr<LogicGate> gate) {
@@ -42,6 +79,7 @@ Wire* CircuitSimulator::createWire(GatePin* sourcePin, GatePin* destPin) {
         wires_.push_back(std::move(wire));
         return rawPtr;
     } catch (const std::exception& e) {
+        TraceLog(LOG_WARNING, "Failed to create wire: %s", e.what());
         return nullptr;
     }
 }
@@ -101,6 +139,42 @@ bool CircuitSimulator::removeWire(Wire* wire) {
     return false;
 }
 
+bool CircuitSimulator::bringGateToFront(LogicGate* gate) {
+    if (!gate) {
+        return false;
+    }
+
+    auto it = std::find_if(gates_.begin(), gates_.end(),
+        [gate](const std::unique_ptr<LogicGate>& ptr) {
+            return ptr.get() == gate;
+        });
+
+    if (it == gates_.end() || std::next(it) == gates_.end()) {
+        return it != gates_.end();
+    }
+
+    std::rotate(it, std::next(it), gates_.end());
+    return true;
+}
+
+bool CircuitSimulator::bringWireToFront(Wire* wire) {
+    if (!wire) {
+        return false;
+    }
+
+    auto it = std::find_if(wires_.begin(), wires_.end(),
+        [wire](const std::unique_ptr<Wire>& ptr) {
+            return ptr.get() == wire;
+        });
+
+    if (it == wires_.end() || std::next(it) == wires_.end()) {
+        return it != wires_.end();
+    }
+
+    std::rotate(it, std::next(it), wires_.end());
+    return true;
+}
+
 const std::vector<std::unique_ptr<LogicGate>>& CircuitSimulator::getGates() const {
     return gates_;
 }
@@ -117,8 +191,13 @@ int CircuitSimulator::useNextGateId() {
     return nextGateId_++;
 }
 
+CircuitSimulator::SimulationStats CircuitSimulator::getLastStats() const {
+    return lastStats_;
+}
+
 void CircuitSimulator::clear() {
     wires_.clear();
     gates_.clear();
     nextGateId_ = 0;
+    lastStats_ = {0, true, false};
 }

@@ -38,7 +38,7 @@ public:
     Wire(GatePin* srcPin, GatePin* dstPin);
 
     /** Updates wire state based on source pin */
-    void update();
+    bool update();
 
     /** Renders the wire to screen */
     void draw() const;

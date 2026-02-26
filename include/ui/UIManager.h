@@ -6,8 +6,8 @@
 #include "ui/PaletteManager.h"
 #include "ui/GateRenderer.h"
 #include "ui/WireRenderer.h"
-#include "core/InputSource.h"
 #include <memory>
+#include <string>
 
 /**
  * Main UI management class that coordinates all user interface elements
@@ -44,9 +44,11 @@ private:
     bool isDraggingWirePoint_;
     bool isDragPending_;
     Vector2 dragStartOffset_;
-    InputSource* clickedInputSource_;
     Vector2 dragStartPosition_;
+    Vector2 dragStartComponentPosition_;
     bool gridSnapEnabled_ = false;
+    bool debugOverlayEnabled_ = false;
+    std::string interactionModeLabel_ = "Idle";
 
 public:
     UIManager(std::shared_ptr<CircuitSimulator> sim);
@@ -90,7 +92,6 @@ public:
     bool isDraggingWirePointActive() const;
 
     // Input source interaction
-    void setClickedInputSource(InputSource* inputSource);
     bool wasDragged(Vector2 currentMousePos) const;
     void deleteSelected();
 
@@ -110,10 +111,16 @@ public:
     bool isPanningActive() const;
     bool isGridSnapEnabled() const { return gridSnapEnabled_; }
     void toggleGridSnap() { gridSnapEnabled_ = !gridSnapEnabled_; }
+    void toggleDebugOverlay() { debugOverlayEnabled_ = !debugOverlayEnabled_; }
+    bool isDebugOverlayEnabled() const { return debugOverlayEnabled_; }
+    void setInteractionModeLabel(const std::string& label) { interactionModeLabel_ = label; }
+    const std::string& getInteractionModeLabel() const { return interactionModeLabel_; }
 
     // Wire and component utilities
     void updateWirePathsForComponent(LogicGate* component);
-    Vector2 checkWireAlignmentSnapping(LogicGate* gate, Vector2 position);
+    Vector2 checkWireAlignmentSnapping(LogicGate* gate, Vector2 position,
+                                       bool enableGridSnap = true,
+                                       bool enableAlignmentSnap = true);
     void handleWindowResize(int newWidth, int newHeight);
 };
 

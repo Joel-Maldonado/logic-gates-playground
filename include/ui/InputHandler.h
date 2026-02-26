@@ -13,8 +13,26 @@
  */
 class InputHandler {
 private:
+    enum class InteractionMode {
+        IDLE,
+        PALETTE_DRAG,
+        WIRE_DRAW,
+        GATE_PRESS_PENDING,
+        GATE_DRAG,
+        WIRE_POINT_DRAG,
+        PAN
+    };
+
+    struct PressCapture {
+        LogicGate* gate;
+        Vector2 worldPos;
+        bool valid;
+    };
+
     std::shared_ptr<CircuitSimulator> simulator_;
     UIManager* uiManager_;
+    InteractionMode mode_;
+    PressCapture pressCapture_;
 
 public:
     /**
@@ -34,21 +52,24 @@ public:
 
     /** Finds a gate pin under the mouse cursor */
     GatePin* findPinUnderMouse(Vector2 worldMousePos);
+    LogicGate* findGateUnderMouse(Vector2 worldMousePos);
+    const char* getModeName() const;
 
     /** Handles keyboard input and shortcuts */
     void handleKeyboardInput();
 
     // Interaction handlers
     bool handlePaletteClick(Vector2 rawMousePos);
-    bool handleCanvasClick(Vector2 worldMousePos);
-    bool handleWireCompletion(Vector2 worldMousePos);
     bool handleGateAndWireInteraction(Vector2 worldMousePos);
-    bool handleGatePlacement();
 
     // Drag and drop handlers
     bool handlePaletteDragStart(Vector2 rawMousePos);
     void handlePaletteDrag(Vector2 rawMousePos);
     bool handlePaletteDrop(Vector2 rawMousePos, Vector2 worldMousePos);
+
+private:
+    void setMode(InteractionMode mode);
+    void clearPressCapture();
 };
 
 #endif // INPUT_HANDLER_H

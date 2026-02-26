@@ -16,18 +16,27 @@ private:
     std::vector<std::unique_ptr<LogicGate>> gates_;
     std::vector<std::unique_ptr<Wire>> wires_;
     int nextGateId_;
+    static constexpr int MAX_SIMULATION_PASSES = 64;
 
 public:
+    struct SimulationStats {
+        int passes;
+        bool stable;
+        bool oscillating;
+    };
+
     CircuitSimulator();
 
     /** Updates all gates and wires in the circuit */
-    void update();
+    SimulationStats update();
 
     // Component management
     LogicGate* addGate(std::unique_ptr<LogicGate> gate);
     Wire* createWire(GatePin* sourcePin, GatePin* destPin);
     bool removeGate(LogicGate* gate);
     bool removeWire(Wire* wire);
+    bool bringGateToFront(LogicGate* gate);
+    bool bringWireToFront(Wire* wire);
 
     // Accessors
     const std::vector<std::unique_ptr<LogicGate>>& getGates() const;
@@ -36,9 +45,13 @@ public:
     // ID management
     int getNextGateId() const;
     int useNextGateId();
+    SimulationStats getLastStats() const;
 
     /** Clears all gates and wires from the circuit */
     void clear();
+
+private:
+    SimulationStats lastStats_;
 };
 
 #endif // CIRCUIT_SIMULATOR_H

@@ -2,10 +2,6 @@
 #include "ui/VisualEffects.h"
 #include "app/Config.h"
 #include <raymath.h>
-#include "core/DerivedGates.h"
-#include "core/InputSource.h"
-#include "core/OutputSink.h"
-#include <typeinfo>
 #include <string>
 #include <cmath>
 
@@ -80,21 +76,15 @@ GateType GateRenderer::determineGateType(const LogicGate* gate) const {
         return GateType::NONE;
     }
 
-    if (dynamic_cast<const InputSource*>(gate)) {
-        return GateType::INPUT_SOURCE;
-    } else if (dynamic_cast<const OutputSink*>(gate)) {
-        return GateType::OUTPUT_SINK;
-    } else if (dynamic_cast<const AndGate*>(gate)) {
-        return GateType::AND;
-    } else if (dynamic_cast<const OrGate*>(gate)) {
-        return GateType::OR;
-    } else if (dynamic_cast<const XorGate*>(gate)) {
-        return GateType::XOR;
-    } else if (dynamic_cast<const NotGate*>(gate)) {
-        return GateType::NOT;
+    switch (gate->getKind()) {
+        case GateKind::INPUT_SOURCE: return GateType::INPUT_SOURCE;
+        case GateKind::OUTPUT_SINK: return GateType::OUTPUT_SINK;
+        case GateKind::AND_GATE: return GateType::AND;
+        case GateKind::OR_GATE: return GateType::OR;
+        case GateKind::XOR_GATE: return GateType::XOR;
+        case GateKind::NOT_GATE: return GateType::NOT;
+        default: return GateType::NONE;
     }
-
-    return GateType::NONE;
 }
 
 void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
@@ -119,8 +109,7 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
     switch (type) {
         case GateType::INPUT_SOURCE:
         {
-            const InputSource* inputSource = dynamic_cast<const InputSource*>(gate);
-            bool isActive = inputSource && inputSource->getCurrentState();
+            bool isActive = (gate->getOutputPinCount() > 0) ? gate->getOutputState(0) : false;
 
             if (isActive) {
                 fillColor = Config::Colors::INPUT_ON;
@@ -179,8 +168,7 @@ void GateRenderer::renderGateBody(const LogicGate* gate, GateType type) const {
         }
         case GateType::OUTPUT_SINK:
         {
-            const OutputSink* outputSink = dynamic_cast<const OutputSink*>(gate);
-            bool isActive = outputSink && outputSink->isActive();
+            bool isActive = (gate->getInputPinCount() > 0) ? gate->getInputPin(0)->getState() : false;
 
             if (isActive) {
                 fillColor = Config::Colors::OUTPUT_ON;
@@ -297,8 +285,8 @@ void GateRenderer::renderGatePins(const LogicGate* gate) const {
         return;
     }
 
-    bool isIOGate = (dynamic_cast<const InputSource*>(gate) != nullptr) ||
-                    (dynamic_cast<const OutputSink*>(gate) != nullptr);
+    bool isIOGate = (gate->getKind() == GateKind::INPUT_SOURCE) ||
+                    (gate->getKind() == GateKind::OUTPUT_SINK);
 
     for (size_t i = 0; i < gate->getInputPinCount(); i++) {
         const GatePin* pin = gate->getInputPin(i);
@@ -554,12 +542,12 @@ void GateRenderer::renderWirePreview(const GatePin* startPin,
     }
 
     // Find pin under mouse cursor
-    GatePin* hoverPin = nullptr;
+    const GatePin* hoverPin = nullptr;
     for (const auto& gate : gates) {
         for (size_t i = 0; i < gate->getInputPinCount(); i++) {
             const GatePin* pin = gate->getInputPin(i);
             if (pin && pin->isMouseOverPin(mousePos)) {
-                hoverPin = const_cast<GatePin*>(pin);
+                hoverPin = pin;
                 break;
             }
         }

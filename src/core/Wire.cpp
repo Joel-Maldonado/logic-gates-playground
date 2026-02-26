@@ -49,10 +49,10 @@ Wire::Wire(GatePin* srcPin, GatePin* dstPin)
     update();
 }
 
-void Wire::update() {
+bool Wire::update() {
     if (!sourcePin_ || !destPin_) {
         state_ = false;
-        return;
+        return false;
     }
 
     try {
@@ -62,10 +62,14 @@ void Wire::update() {
             if (destPin_->getParentGate()) {
                  destPin_->getParentGate()->markDirty();
             }
+            return true;
         }
     } catch (const std::exception& e) {
         state_ = false;
+        TraceLog(LOG_WARNING, "Wire update failed: %s", e.what());
     }
+
+    return false;
 }
 
 void Wire::draw() const {
@@ -127,6 +131,7 @@ void Wire::draw() const {
             }
         }
     } catch (const std::exception& e) {
+        TraceLog(LOG_WARNING, "Wire draw failed: %s", e.what());
     }
 }
 

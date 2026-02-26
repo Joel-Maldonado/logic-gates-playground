@@ -73,15 +73,16 @@ bool GatePin::getState() const {
     return currentState_;
 }
 
-void GatePin::setState(bool newState) {
+bool GatePin::setState(bool newState) {
     if (type_ == PinType::INPUT_PIN) {
         if (currentState_ != newState) {
             currentState_ = newState;
             if (parentGate_) {
                 parentGate_->markDirty();
             }
+            return true;
         }
-        return;
+        return false;
     }
 
     if (currentState_ != newState) {
@@ -91,7 +92,10 @@ void GatePin::setState(bool newState) {
                 dependentPin->getParentGate()->markDirty();
             }
         }
+        return true;
     }
+
+    return false;
 }
 
 void GatePin::connectTo(GatePin* outputPin) {

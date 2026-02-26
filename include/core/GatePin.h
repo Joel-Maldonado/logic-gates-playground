@@ -53,7 +53,7 @@ public:
 
     // State management
     bool getState() const;
-    void setState(bool newState);
+    bool setState(bool newState);
 
     // UI state management
     void setHovered(bool hovered);

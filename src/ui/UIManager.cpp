@@ -1,5 +1,6 @@
 #include "ui/UIManager.h"
 #include "app/Config.h"
+#include "ui/InteractionHelpers.h"
 #include "ui/VisualEffects.h"
 #include <raymath.h>
 #include <algorithm>
@@ -20,8 +21,8 @@ UIManager::UIManager(std::shared_ptr<CircuitSimulator> sim)
       isDraggingWirePoint_(false),
       isDragPending_(false),
       dragStartOffset_({0, 0}),
-      clickedInputSource_(nullptr),
-      dragStartPosition_({0, 0}) {
+      dragStartPosition_({0, 0}),
+      dragStartComponentPosition_({0, 0}) {
 
     camera_.target = { (float)Config::SCREEN_WIDTH / 2, (float)Config::SCREEN_HEIGHT / 2 };
     camera_.offset = { (float)Config::SCREEN_WIDTH / 2, (float)Config::SCREEN_HEIGHT / 2 };
@@ -113,6 +114,26 @@ void UIManager::render() {
 
     DrawFPS(GetScreenWidth() - 90, 10);
 
+    if (debugOverlayEnabled_) {
+        const auto stats = simulator_->getLastStats();
+        Rectangle overlay = {10.0f, 10.0f, 360.0f, 110.0f};
+        DrawRectangleRounded(overlay, 0.15f, 8, Fade(Config::Colors::SURFACE_VARIANT, 0.9f));
+        DrawRectangleRoundedLines(overlay, 0.15f, 8, 1.0f, Config::Colors::GATE_OUTLINE);
+
+        char statsLine[128];
+        snprintf(statsLine, sizeof(statsLine), "Passes: %d  Stable: %s  Oscillating: %s",
+                 stats.passes,
+                 stats.stable ? "yes" : "no",
+                 stats.oscillating ? "yes" : "no");
+
+        DrawText("Debug Overlay (F1)", 20, 18, 18, Config::Colors::PALETTE_TEXT);
+        DrawText(statsLine, 20, 46, 16, Config::Colors::PALETTE_TEXT);
+        DrawText(TextFormat("Interaction: %s", interactionModeLabel_.c_str()),
+                 20, 72, 16, Config::Colors::PALETTE_TEXT);
+        DrawText(TextFormat("Snap: %s", gridSnapEnabled_ ? "On" : "Off"),
+                 20, 94, 16, Config::Colors::PALETTE_TEXT);
+    }
+
     EndDrawing();
 }
 
@@ -175,6 +196,7 @@ void UIManager::selectComponent(LogicGate* component) {
     deselectAll();
 
     if (component) {
+        simulator_->bringGateToFront(component);
         selectedComponent_ = component;
         selectedComponent_->setSelected(true);
     }
@@ -184,6 +206,7 @@ void UIManager::selectWire(Wire* wire) {
     deselectAll();
 
     if (wire) {
+        simulator_->bringWireToFront(wire);
         selectedWire_ = wire;
         selectedWire_->setSelected(true);
     }
@@ -254,6 +277,7 @@ void UIManager::startDraggingComponent(LogicGate* component, Vector2 mousePos) {
     isDraggingComponent_ = false;
     dragStartOffset_ = Vector2Subtract(mousePos, component->getPosition());
     dragStartPosition_ = mousePos;
+    dragStartComponentPosition_ = component->getPosition();
 }
 
 void UIManager::updateDragging(Vector2 mousePos) {
@@ -262,7 +286,14 @@ void UIManager::updateDragging(Vector2 mousePos) {
     }
 
     Vector2 position = Vector2Subtract(mousePos, dragStartOffset_);
-    Vector2 alignedPosition = checkWireAlignmentSnapping(selectedComponent_, position);
+    bool isShiftDown = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    if (isShiftDown) {
+        InteractionHelpers::DragAxis axis = InteractionHelpers::determineDominantAxis(dragStartPosition_, mousePos);
+        position = InteractionHelpers::applyAxisLock(position, dragStartComponentPosition_, axis);
+    }
+
+    bool snapEnabled = !(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT));
+    Vector2 alignedPosition = checkWireAlignmentSnapping(selectedComponent_, position, snapEnabled, snapEnabled);
     selectedComponent_->setPosition(alignedPosition);
     updateWirePathsForComponent(selectedComponent_);
 }
@@ -270,7 +301,8 @@ void UIManager::updateDragging(Vector2 mousePos) {
 void UIManager::stopDragging() {
     if (isDraggingComponent_ && selectedComponent_) {
         Vector2 currentPos = selectedComponent_->getPosition();
-        Vector2 alignedPos = checkWireAlignmentSnapping(selectedComponent_, currentPos);
+        bool snapEnabled = !(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT));
+        Vector2 alignedPos = checkWireAlignmentSnapping(selectedComponent_, currentPos, snapEnabled, snapEnabled);
         selectedComponent_->setPosition(alignedPos);
         updateWirePathsForComponent(selectedComponent_);
     }
@@ -281,10 +313,7 @@ void UIManager::stopDragging() {
 
 void UIManager::tryStartDrag(Vector2 mousePos) {
     if (!isDragPending_ || !selectedComponent_) return;
-    float dx = mousePos.x - dragStartPosition_.x;
-    float dy = mousePos.y - dragStartPosition_.y;
-    float distance = sqrtf(dx*dx + dy*dy);
-    if (distance > Config::DRAG_THRESHOLD) {
+    if (InteractionHelpers::exceedsDragThreshold(dragStartPosition_, mousePos)) {
         isDraggingComponent_ = true;
         isDragPending_ = false;
     }
@@ -348,15 +377,8 @@ PaletteManager& UIManager::getPaletteManager() {
     return *paletteManager_;
 }
 
-void UIManager::setClickedInputSource(InputSource* inputSource) {
-    clickedInputSource_ = inputSource;
-}
-
 bool UIManager::wasDragged(Vector2 currentMousePos) const {
-    float dx = currentMousePos.x - dragStartPosition_.x;
-    float dy = currentMousePos.y - dragStartPosition_.y;
-    float distance = sqrt(dx*dx + dy*dy);
-    return distance > Config::DRAG_THRESHOLD;
+    return InteractionHelpers::exceedsDragThreshold(dragStartPosition_, currentMousePos);
 }
 
 void UIManager::renderGrid() {
@@ -479,7 +501,9 @@ void UIManager::handleWindowResize(int newWidth, int newHeight) {
     paletteManager_->handleWindowResize();
 }
 
-Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position) {
+Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position,
+                                              bool enableGridSnap,
+                                              bool enableAlignmentSnap) {
     if (!gate) {
         return position;
     }
@@ -489,13 +513,13 @@ Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position)
 
     // Optional grid snap to keep movement tidy
     Vector2 snapped = position;
-    if (gridSnapEnabled_) {
+    if (gridSnapEnabled_ && enableGridSnap) {
         float gs = Config::GRID_SIZE;
         snapped.x = roundf(snapped.x / gs) * gs;
         snapped.y = roundf(snapped.y / gs) * gs;
     }
 
-    if (associatedWires.empty()) {
+    if (!enableAlignmentSnap || associatedWires.empty()) {
         return snapped;
     }
 
@@ -527,13 +551,13 @@ Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position)
         }
 
         Vector2 currentPinOffset = Vector2Subtract(thisGatePin->getAbsolutePosition(), gate->getPosition());
-        Vector2 projectedPinPos = Vector2Add(position, currentPinOffset);
+        Vector2 projectedPinPos = Vector2Add(snapped, currentPinOffset);
         Vector2 otherPinPos = otherGatePin->getAbsolutePosition();
 
         float yDiff = fabs(projectedPinPos.y - otherPinPos.y);
         if (yDiff < SNAP_THRESHOLD) {
             float yAdjustment = otherPinPos.y - projectedPinPos.y;
-            adjustedPosition.y = position.y + yAdjustment;
+            adjustedPosition.y = snapped.y + yAdjustment;
             hasSnapped = true;
         }
 
@@ -541,7 +565,7 @@ Vector2 UIManager::checkWireAlignmentSnapping(LogicGate* gate, Vector2 position)
             float xDiff = fabs(projectedPinPos.x - otherPinPos.x);
             if (xDiff < SNAP_THRESHOLD) {
                 float xAdjustment = otherPinPos.x - projectedPinPos.x;
-                adjustedPosition.x = position.x + xAdjustment;
+                adjustedPosition.x = snapped.x + xAdjustment;
                 hasSnapped = true;
             }
         }
