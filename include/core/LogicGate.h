@@ -32,7 +32,6 @@ protected:
     float width_;
     float height_;
     bool isDirty_;
-    bool isSelected_;
 
     std::vector<GatePin> inputPins_;
     std::vector<GatePin> outputPins_;
@@ -98,10 +97,6 @@ public:
     // Mouse interaction methods
     virtual bool isMouseOver(Vector2 mousePos) const;
     virtual GatePin* getPinAt(Vector2 mousePos, float tolerance = 5.0f);
-
-    // Selection methods
-    void setSelected(bool selected);
-    bool getIsSelected() const;
 
     // Property getters
     std::string getId() const;

@@ -23,8 +23,6 @@ private:
     PinType type_;
     int pinId_;
     Vector2 relativeOffset_;
-    bool isHovered_;
-    bool isSelected_;
     float clickRadius_;
     GatePin* sourceOutputPin_;
     std::vector<GatePin*> dependentInputPins_;
@@ -45,8 +43,6 @@ public:
     PinType getType() const;
     int getId() const;
     Vector2 getRelativeOffset() const;
-    bool isHovered() const;
-    bool isSelected() const;
     float getClickRadius() const;
     const GatePin* getSourceOutputPin() const;
     const std::vector<GatePin*>& getDependentInputPins() const;
@@ -54,10 +50,6 @@ public:
     // State management
     bool getState() const;
     bool setState(bool newState);
-
-    // UI state management
-    void setHovered(bool hovered);
-    void setSelected(bool selected);
 
     // Connection management
     void connectTo(GatePin* outputPin);

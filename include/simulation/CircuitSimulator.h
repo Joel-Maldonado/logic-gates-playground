@@ -37,6 +37,8 @@ public:
     bool removeWire(Wire* wire);
     bool bringGateToFront(LogicGate* gate);
     bool bringWireToFront(Wire* wire);
+    LogicGate* findGateById(const std::string& id) const;
+    Wire* findWireByPins(const GatePin* sourcePin, const GatePin* destPin) const;
 
     // Accessors
     const std::vector<std::unique_ptr<LogicGate>>& getGates() const;
@@ -45,6 +47,7 @@ public:
     // ID management
     int getNextGateId() const;
     int useNextGateId();
+    void setNextGateId(int value);
     SimulationStats getLastStats() const;
 
     /** Clears all gates and wires from the circuit */

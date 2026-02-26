@@ -28,39 +28,67 @@ set(PROJECT_SOURCES
     src/app/Application.cpp
     src/app/Config.cpp
     src/core/DerivedGates.cpp
+    src/core/GateSymbolGeometry.cpp
     src/core/GatePin.cpp
     src/core/InputSource.cpp
     src/core/LogicGate.cpp
     src/core/OutputSink.cpp
     src/core/Wire.cpp
     src/simulation/CircuitSimulator.cpp
-    src/ui/GateRenderer.cpp
-    src/ui/InputHandler.cpp
+    src/ui/CommandPalette.cpp
+    src/ui/CommandStack.cpp
+    src/ui/DesignTokens.cpp
+    src/ui/GateFactory.cpp
+    src/ui/GateGeometry.cpp
+    src/ui/GatePainter.cpp
+    src/ui/InspectorPanel.cpp
+    src/ui/InteractionController.cpp
     src/ui/PaletteManager.cpp
+    src/ui/SceneRenderer.cpp
+    src/ui/Toolbar.cpp
     src/ui/UIManager.cpp
-    src/ui/VisualEffects.cpp
-    src/ui/WireRenderer.cpp
+    src/ui/WirePainter.cpp
     src/ui/WireRouter.cpp
+    src/ui/commands/AddGateCommand.cpp
+    src/ui/commands/AddWireCommand.cpp
+    src/ui/commands/DeleteSelectionCommand.cpp
+    src/ui/commands/DuplicateSelectionCommand.cpp
+    src/ui/commands/MoveGatesCommand.cpp
 )
 
 set(PROJECT_HEADERS
     include/app/Application.h
     include/app/Config.h
     include/core/DerivedGates.h
+    include/core/GateSymbolGeometry.h
     include/core/GatePin.h
     include/core/InputSource.h
     include/core/LogicGate.h
     include/core/OutputSink.h
     include/core/Wire.h
     include/simulation/CircuitSimulator.h
-    include/ui/GateRenderer.h
-    include/ui/InputHandler.h
+    include/ui/CommandPalette.h
+    include/ui/CommandStack.h
+    include/ui/DesignTokens.h
+    include/ui/EditorCommand.h
+    include/ui/EditorSelection.h
+    include/ui/GateFactory.h
+    include/ui/GateGeometry.h
+    include/ui/GatePainter.h
+    include/ui/InspectorPanel.h
+    include/ui/InteractionController.h
     include/ui/InteractionHelpers.h
     include/ui/PaletteManager.h
+    include/ui/SceneRenderer.h
+    include/ui/Toolbar.h
     include/ui/UIManager.h
-    include/ui/VisualEffects.h
-    include/ui/WireRenderer.h
+    include/ui/WirePainter.h
     include/ui/WireRouter.h
+    include/ui/commands/AddGateCommand.h
+    include/ui/commands/AddWireCommand.h
+    include/ui/commands/DeleteSelectionCommand.h
+    include/ui/commands/DuplicateSelectionCommand.h
+    include/ui/commands/MoveGatesCommand.h
 )
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES} ${PROJECT_HEADERS})
@@ -94,14 +122,18 @@ enable_testing()
 set(TEST_SOURCES
     tests/tests.cpp
     src/core/DerivedGates.cpp
+    src/core/GateSymbolGeometry.cpp
     src/core/GatePin.cpp
     src/core/InputSource.cpp
     src/core/LogicGate.cpp
     src/core/OutputSink.cpp
     src/core/Wire.cpp
     src/simulation/CircuitSimulator.cpp
-    src/ui/VisualEffects.cpp
+    src/ui/CommandStack.cpp
+    src/ui/GateFactory.cpp
+    src/ui/GateGeometry.cpp
     src/ui/WireRouter.cpp
+    src/ui/commands/DuplicateSelectionCommand.cpp
 )
 
 add_executable(logic-gates-tests ${TEST_SOURCES})

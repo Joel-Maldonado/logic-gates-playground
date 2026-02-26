@@ -10,16 +10,12 @@ Application::Application()
 }
 
 void Application::initialize() {
-    // Enable multi-sample anti-aliasing for smoother visuals
-    SetConfigFlags(FLAG_MSAA_4X_HINT);
-    // Keep window resizable
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_RESIZABLE);
     InitWindow(Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, Config::WINDOW_TITLE);
     SetTargetFPS(Config::TARGET_FPS);
 
     uiManager = std::make_unique<UIManager>(simulator);
     uiManager->initialize();
-    inputHandler = std::make_unique<InputHandler>(simulator, uiManager.get());
 
     isRunning = true;
 }
@@ -44,7 +40,7 @@ void Application::render() {
 }
 
 void Application::processInput() {
-    inputHandler->processInput();
+    uiManager->processInput();
 }
 
 void Application::handleWindowResize() {

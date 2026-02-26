@@ -11,8 +11,6 @@ GatePin::GatePin(LogicGate* parent, PinType pinType, int id, Vector2 offset)
       type_(pinType),
       pinId_(id),
       relativeOffset_(offset),
-      isHovered_(false),
-      isSelected_(false),
       clickRadius_(Config::PIN_CLICK_RADIUS),
       sourceOutputPin_(nullptr),
       currentState_(false) {
@@ -34,14 +32,6 @@ Vector2 GatePin::getRelativeOffset() const {
     return relativeOffset_;
 }
 
-bool GatePin::isHovered() const {
-    return isHovered_;
-}
-
-bool GatePin::isSelected() const {
-    return isSelected_;
-}
-
 float GatePin::getClickRadius() const {
     return clickRadius_;
 }
@@ -52,14 +42,6 @@ const GatePin* GatePin::getSourceOutputPin() const {
 
 const std::vector<GatePin*>& GatePin::getDependentInputPins() const {
     return dependentInputPins_;
-}
-
-void GatePin::setHovered(bool hovered) {
-    isHovered_ = hovered;
-}
-
-void GatePin::setSelected(bool selected) {
-    isSelected_ = selected;
 }
 
 bool GatePin::getState() const {

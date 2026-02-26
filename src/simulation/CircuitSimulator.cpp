@@ -175,6 +175,36 @@ bool CircuitSimulator::bringWireToFront(Wire* wire) {
     return true;
 }
 
+LogicGate* CircuitSimulator::findGateById(const std::string& id) const {
+    auto it = std::find_if(gates_.begin(), gates_.end(),
+        [&id](const std::unique_ptr<LogicGate>& gatePtr) {
+            return gatePtr && gatePtr->getId() == id;
+        });
+
+    if (it == gates_.end()) {
+        return nullptr;
+    }
+
+    return it->get();
+}
+
+Wire* CircuitSimulator::findWireByPins(const GatePin* sourcePin, const GatePin* destPin) const {
+    auto it = std::find_if(wires_.begin(), wires_.end(),
+        [sourcePin, destPin](const std::unique_ptr<Wire>& wirePtr) {
+            if (!wirePtr) {
+                return false;
+            }
+
+            return wirePtr->getSourcePin() == sourcePin && wirePtr->getDestPin() == destPin;
+        });
+
+    if (it == wires_.end()) {
+        return nullptr;
+    }
+
+    return it->get();
+}
+
 const std::vector<std::unique_ptr<LogicGate>>& CircuitSimulator::getGates() const {
     return gates_;
 }
@@ -189,6 +219,10 @@ int CircuitSimulator::getNextGateId() const {
 
 int CircuitSimulator::useNextGateId() {
     return nextGateId_++;
+}
+
+void CircuitSimulator::setNextGateId(int value) {
+    nextGateId_ = value;
 }
 
 CircuitSimulator::SimulationStats CircuitSimulator::getLastStats() const {

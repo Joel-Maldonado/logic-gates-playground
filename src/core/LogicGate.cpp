@@ -9,7 +9,7 @@
 #include <set>
 
 LogicGate::LogicGate(std::string gateId, GateKind kind, Vector2 pos, float w, float h)
-    : id_(std::move(gateId)), gateKind_(kind), position_(pos), width_(w), height_(h), isDirty_(true), isSelected_(false) {
+    : id_(std::move(gateId)), gateKind_(kind), position_(pos), width_(w), height_(h), isDirty_(true) {
 }
 
 LogicGate::~LogicGate() {
@@ -135,14 +135,6 @@ GatePin* LogicGate::getPinAt(Vector2 mousePos, float tolerance) {
         }
     }
     return nullptr;
-}
-
-void LogicGate::setSelected(bool selected) {
-    isSelected_ = selected;
-}
-
-bool LogicGate::getIsSelected() const {
-    return isSelected_;
 }
 
 std::string LogicGate::getId() const {

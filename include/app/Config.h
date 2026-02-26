@@ -5,6 +5,8 @@
 #include <string>
 
 namespace Config {
+    constexpr bool UI_REVAMP_V2 = true;
+
     // Window configuration
     constexpr int SCREEN_WIDTH = 1280;
     constexpr int SCREEN_HEIGHT = 720;

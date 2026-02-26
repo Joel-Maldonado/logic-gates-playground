@@ -1,16 +1,14 @@
 #ifndef PALETTE_MANAGER_H
 #define PALETTE_MANAGER_H
 
-#include <raylib.h>
-#include <raymath.h>
 #include "simulation/CircuitSimulator.h"
-#include <vector>
-#include <string>
-#include <memory>
+#include "ui/DesignTokens.h"
 
-/**
- * Enum for gate types available in the palette
- */
+#include <raylib.h>
+#include <memory>
+#include <string>
+#include <vector>
+
 enum class GateType {
     NONE,
     INPUT_SOURCE,
@@ -21,53 +19,55 @@ enum class GateType {
     NOT
 };
 
-/**
- * Structure for an item in the palette
- */
 struct PaletteItem {
     Rectangle bounds;
     GateType type;
     std::string label;
 };
 
-/**
- * Manages the component palette
- * Handles rendering and interaction with the palette
- */
 class PaletteManager {
-private:
-    std::vector<PaletteItem> gatePalette_;
-    GateType selectedGateType_;
-    std::shared_ptr<CircuitSimulator> simulator_;
-
-    // Drag and drop state
-    bool isDraggingGate_;
-    GateType draggedGateType_;
-    Vector2 dragStartPos_;
-    Vector2 currentDragPos_;
-
-    Color getGateColor(GateType type) const;
-    void drawGateIcon(GateType type, Rectangle bounds, Color color) const;
-
 public:
-    PaletteManager(std::shared_ptr<CircuitSimulator> sim);
+    explicit PaletteManager(std::shared_ptr<CircuitSimulator> simulator);
+
     void initialize();
-    void render(const Camera2D& camera);
-    bool handleClick(Vector2 mousePos);
-    std::unique_ptr<LogicGate> createSelectedGateInstance(Vector2 position);
-    GateType getSelectedGateType() const;
-    void setSelectedGateType(GateType type);
-    static std::string getGateTypeName(GateType type);
+    void setBounds(Rectangle bounds);
     Rectangle getPaletteBounds() const;
+
+    void render(const DesignTokens& tokens, Rectangle canvasBounds) const;
+
+    bool handleClick(Vector2 mousePos);
     bool startDraggingGate(Vector2 mousePos);
     void updateDragPosition(Vector2 mousePos);
     LogicGate* endDraggingGate(Vector2 worldPos);
     void cancelDraggingGate();
+
     bool isDraggingGateActive() const;
     GateType getDraggedGateType() const;
     Vector2 getCurrentDragPosition() const;
+
+    std::unique_ptr<LogicGate> createSelectedGateInstance(Vector2 position);
     std::unique_ptr<LogicGate> createGateInstance(GateType type, Vector2 position);
+
+    GateType getSelectedGateType() const;
+    void setSelectedGateType(GateType type);
+
+    static std::string getGateTypeName(GateType type);
+    static GateKind toGateKind(GateType type);
+
     void handleWindowResize();
+
+private:
+    std::vector<PaletteItem> gatePalette_;
+    std::shared_ptr<CircuitSimulator> simulator_;
+
+    Rectangle bounds_;
+    GateType selectedGateType_;
+
+    bool isDraggingGate_;
+    GateType draggedGateType_;
+    Vector2 currentDragPos_;
+
+    void drawGateIcon(GateType type, Rectangle iconBounds, const DesignTokens& tokens) const;
 };
 
 #endif // PALETTE_MANAGER_H

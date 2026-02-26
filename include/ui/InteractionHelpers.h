@@ -48,6 +48,17 @@ inline Vector2 applyAxisLock(Vector2 position, Vector2 anchor, DragAxis axis) {
     return position;
 }
 
+inline Vector2 snapToGrid(Vector2 position, float gridSize) {
+    if (gridSize <= 0.0f) {
+        return position;
+    }
+
+    return {
+        roundf(position.x / gridSize) * gridSize,
+        roundf(position.y / gridSize) * gridSize
+    };
+}
+
 } // namespace InteractionHelpers
 
 #endif // INTERACTION_HELPERS_H
