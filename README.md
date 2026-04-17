@@ -1,9 +1,6 @@
 # logicsim-playground
 
-A little digital logic simulator I wrote while taking an ECE class. The goal is that you can drop
-inputs, outputs, and gates on a canvas, wire them together, and watch the
-signals propagate. Truth tables and waveforms show up on the side so you can
-poke at things and see what happens.
+A little digital logic simulator I wrote in C while taking an ECE class. The goal is to be able to  drop logic gates on a canvas, wire them together, and watch the signals propagate. Truth tables and waveforms show up on the side so you can poke at things and see what happens.
 
 NOTE: This is not a serious tool, just an educational project for me and somewhere to play around with.
 
