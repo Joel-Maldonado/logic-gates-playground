@@ -456,7 +456,7 @@ int main(int argc, char **argv) {
     shortcuts_open = false;
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(WORKSPACE_WINDOW_START_WIDTH, WORKSPACE_WINDOW_START_HEIGHT, "Multi-View Logic Debugger");
+    InitWindow(WORKSPACE_WINDOW_START_WIDTH, WORKSPACE_WINDOW_START_HEIGHT, "LogicSim");
     SetWindowMinSize(WORKSPACE_WINDOW_MIN_WIDTH, WORKSPACE_WINDOW_MIN_HEIGHT);
     SetTargetFPS(60);
     SetExitKey(KEY_NULL);
@@ -764,7 +764,7 @@ int main(int argc, char **argv) {
             WORKSPACE_TOPBAR_HEIGHT,
             (Color){ 50, 50, 50, 255 }
         );
-        draw_text_at("MVLD", 20.0f, 16.0f, 20, LIGHTGRAY);
+        draw_text_at("LOGICSIM", 20.0f, 16.0f, 20, LIGHTGRAY);
 
         {
             Color violet;

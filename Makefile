@@ -11,7 +11,7 @@ BIN_DIR = bin
 SRC = $(wildcard $(SRC_DIR)/*.c)
 APP_SRC = $(filter-out $(SRC_DIR)/main.c,$(SRC))
 OBJ = $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
-TARGET = $(BIN_DIR)/mvld
+TARGET = $(BIN_DIR)/logicsim
 
 TEST_DIR = tests
 TEST_SRC = $(wildcard $(TEST_DIR)/*.c)
