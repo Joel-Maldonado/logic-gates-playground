@@ -4,7 +4,7 @@ A little digital logic simulator I wrote in C while taking an ECE class. The goa
 
 NOTE: This is not a serious tool, just an educational project for me and somewhere to play around with.
 
-<img width="1552" height="1044" alt="a565a44df1e584fccd2e4f09cb927188e36fa3c9e6e6a83720b1912b029e95ec" src="https://github.com/user-attachments/assets/59758642-ed4d-4c9f-8bb2-e17d7ae9af17" />
+<img width="1552" height="1044" alt="52e53eff70fdee5b086c4bfc731d92de930e010b57fbf054399399c0a402ab15" src="https://github.com/user-attachments/assets/a6c219e7-e814-4e8b-a970-4a2e9614caf8" />
 
 ## What's in it
 
