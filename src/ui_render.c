@@ -30,75 +30,6 @@ static int fit_text_font_size(const char *text, float max_width, int preferred_s
     return font_size;
 }
 
-static float draw_wrapped_text_block(
-    const char *text,
-    float x,
-    float y,
-    float max_width,
-    int font_size,
-    float line_gap,
-    Color color
-) {
-    char line[256];
-    const char *cursor;
-
-    if (!text || text[0] == '\0') {
-        return y;
-    }
-
-    if (max_width <= 0.0f) {
-        draw_text_at(text, x, y, font_size, color);
-        return y + (float)font_size;
-    }
-
-    line[0] = '\0';
-    cursor = text;
-    while (*cursor != '\0') {
-        char word[128];
-        char candidate[256];
-        size_t word_len;
-        size_t line_len;
-
-        while (*cursor == ' ') {
-            cursor++;
-        }
-        if (*cursor == '\0') {
-            break;
-        }
-
-        word_len = 0U;
-        while (cursor[word_len] != '\0' && cursor[word_len] != ' ' && word_len + 1U < sizeof(word)) {
-            word_len++;
-        }
-        memcpy(word, cursor, word_len);
-        word[word_len] = '\0';
-        cursor += word_len;
-
-        line_len = strlen(line);
-        if (line_len == 0U) {
-            snprintf(candidate, sizeof(candidate), "%s", word);
-        } else {
-            snprintf(candidate, sizeof(candidate), "%s %s", line, word);
-        }
-
-        if (line_len > 0U && text_width(candidate, font_size) > max_width) {
-            draw_text_at(line, x, y, font_size, color);
-            y += (float)font_size + line_gap;
-            snprintf(line, sizeof(line), "%s", word);
-            continue;
-        }
-
-        snprintf(line, sizeof(line), "%s", candidate);
-    }
-
-    if (line[0] != '\0') {
-        draw_text_at(line, x, y, font_size, color);
-        y += (float)font_size;
-    }
-
-    return y;
-}
-
 static void draw_circle_at(float x, float y, float radius, Color color) {
     DrawCircle(pixel(x), pixel(y), radius, color);
 }
@@ -705,6 +636,7 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
     uint32_t output_index;
     uint32_t row_index;
     float col_width;
+    float header_width_limit;
     uint32_t visible_rows;
     uint32_t hidden_rows;
     int text_y;
@@ -723,12 +655,25 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
         col_width = 0.0f;
     }
     col_width /= (float)((cols > 0U) ? cols : 1U);
+    header_width_limit = col_width - 18.0f;
+    if (header_width_limit < 0.0f) {
+        header_width_limit = 0.0f;
+    }
     visible_rows = ui_truth_table_visible_rows_in_panel(app, panel);
     hidden_rows = app->current_table->row_count - visible_rows;
 
     for (row_index = 0; row_index < app->current_table->input_count; row_index++) {
-        draw_text_at(
+        char label[64];
+
+        text_fit_with_ellipsis(
             app->current_table->inputs[row_index]->name,
+            13,
+            header_width_limit,
+            label,
+            sizeof(label)
+        );
+        draw_text_at(
+            label,
             panel.x + TRUTH_TABLE_COLUMN_X_PADDING + ((float)row_index * col_width),
             (float)text_y,
             13,
@@ -736,8 +681,17 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
         );
     }
     for (output_index = 0; output_index < app->current_table->output_count; output_index++) {
-        draw_text_at(
+        char label[64];
+
+        text_fit_with_ellipsis(
             app->current_table->outputs[output_index]->name,
+            13,
+            header_width_limit,
+            label,
+            sizeof(label)
+        );
+        draw_text_at(
+            label,
             panel.x + TRUTH_TABLE_COLUMN_X_PADDING + ((float)(app->current_table->input_count + output_index) * col_width),
             (float)text_y,
             13,
@@ -821,8 +775,6 @@ void ui_draw_kmap(AppContext *app, Rectangle panel) {
     int origin_x;
     int origin_y;
     int b;
-
-    draw_text_at("K-MAP", panel.x, panel.y, 11, GRAY);
 
     if (!app->current_table || app->current_table->input_count != 2) {
         draw_text_at("Available when the circuit has exactly two inputs.", panel.x, panel.y + 18.0f, 13, GRAY);
@@ -950,15 +902,19 @@ static void draw_section_shell(Rectangle section) {
 
 static void draw_context_status(AppContext *app, Rectangle rect) {
     LogicNode *node;
+    char title[96];
     char line[192];
+    char fitted_inputs[192];
     size_t written;
     uint8_t input_index;
     LogicValue out_value;
-    float text_x;
+    float section_left;
+    float section_right;
     float text_width_limit;
 
     draw_section_shell(rect);
-    text_x = rect.x + 16.0f;
+    section_left = rect.x + 16.0f;
+    section_right = rect.x + rect.width - 16.0f;
     text_width_limit = rect.width - 32.0f;
 
     node = app->view_ctx.selected_node;
@@ -966,19 +922,21 @@ static void draw_context_status(AppContext *app, Rectangle rect) {
         draw_section_header(rect, "CONTEXT");
         draw_wrapped_text_block(
             "Select a gate to inspect its live state and boolean form.",
-            text_x,
+            section_left,
             rect.y + 28.0f,
             text_width_limit,
             12,
             4.0f,
+            2U,
             (Color){ 170, 170, 170, 255 }
         );
         return;
     }
 
+    text_fit_with_ellipsis(node->name ? node->name : ui_node_label(node->type), 16, text_width_limit, title, sizeof(title));
     draw_text_at(
-        node->name ? node->name : ui_node_label(node->type),
-        rect.x + 14.0f,
+        title,
+        section_left,
         rect.y + 10.0f,
         16,
         WHITE
@@ -1028,27 +986,48 @@ static void draw_context_status(AppContext *app, Rectangle rect) {
     }
 
     if (node->input_count > 0) {
-        draw_text_at(line, rect.x + 14.0f, rect.y + 32.0f, 12, LIGHTGRAY);
+        char out_line[32];
+        Color out_color;
+        float out_width;
+        float out_x;
+        float inputs_width_limit;
+
+        snprintf(out_line, sizeof(out_line), "Out: %s", logic_digit_text(out_value));
+        out_color = (out_value == LOGIC_HIGH) ? (Color){ 245, 185, 50, 255 } : LIGHTGRAY;
+        out_width = text_width(out_line, 12);
+        out_x = section_right - out_width;
+        inputs_width_limit = out_x - section_left - 12.0f;
+        if (inputs_width_limit < 0.0f) {
+            inputs_width_limit = 0.0f;
+        }
+
+        text_fit_with_ellipsis(line, 12, inputs_width_limit, fitted_inputs, sizeof(fitted_inputs));
+        if (fitted_inputs[0] != '\0') {
+            draw_text_at(fitted_inputs, section_left, rect.y + 32.0f, 12, LIGHTGRAY);
+        }
+        draw_text_at(out_line, out_x, rect.y + 32.0f, 12, out_color);
+        return;
     }
 
     {
         char out_line[32];
         Color out_color;
+        float out_width;
 
         snprintf(out_line, sizeof(out_line), "Out: %s", logic_digit_text(out_value));
         out_color = (out_value == LOGIC_HIGH) ? (Color){ 245, 185, 50, 255 } : LIGHTGRAY;
-        draw_text_at(out_line, rect.x + rect.width - 78.0f, rect.y + 32.0f, 12, out_color);
+        out_width = text_width(out_line, 12);
+        draw_text_at(out_line, section_right - out_width, rect.y + 32.0f, 12, out_color);
     }
 }
 
 static void draw_context_equation(AppContext *app, Rectangle rect) {
     LogicNode *node;
-    char resolved[256];
-    const char *name;
-    size_t name_len;
-    const char *after_name;
-    const char *second_eq;
-    LogicValue value;
+    char symbolic[512];
+    char values[512];
+    float text_x;
+    float text_width_limit;
+    float text_y;
 
     draw_section_shell(rect);
     draw_section_header(rect, "EQUATION");
@@ -1062,46 +1041,29 @@ static void draw_context_equation(AppContext *app, Rectangle rect) {
             rect.width - 32.0f,
             12,
             4.0f,
+            2U,
             GRAY
         );
         return;
     }
 
-    if (!logic_format_equation_resolved(&app->graph, node, resolved, sizeof(resolved))) {
+    if (!logic_format_equation_symbolic(&app->graph, node, symbolic, sizeof(symbolic))) {
         return;
     }
+    if (!logic_format_equation_values(&app->graph, node, values, sizeof(values))) {
+        values[0] = '\0';
+    }
 
-    value = (node->type == NODE_OUTPUT)
-        ? node->inputs[0].value
-        : ((node->output_count > 0) ? node->outputs[0].value : LOGIC_UNKNOWN);
+    text_x = rect.x + 16.0f;
+    text_y = rect.y + 30.0f;
+    text_width_limit = rect.width - 32.0f;
+    text_y = draw_wrapped_text_block(symbolic, text_x, text_y, text_width_limit, 13, 3.0f, 2U, WHITE);
 
-    name = node->name ? node->name : "out";
-    name_len = strlen(name);
-    after_name = resolved + name_len + 3U;
-    second_eq = strstr(after_name, " = ");
+    if (values[0] != '\0' && strcmp(symbolic, values) != 0) {
+        Color values_color;
 
-    if (second_eq) {
-        char symbolic_line[256];
-        char resolved_line[256];
-        size_t symbolic_len;
-        Color value_color;
-
-        symbolic_len = (size_t)(second_eq - resolved);
-        if (symbolic_len >= sizeof(symbolic_line)) {
-            symbolic_len = sizeof(symbolic_line) - 1U;
-        }
-        memcpy(symbolic_line, resolved, symbolic_len);
-        symbolic_line[symbolic_len] = '\0';
-
-        snprintf(resolved_line, sizeof(resolved_line), "   %s", second_eq + 3);
-
-        value_color = (value == LOGIC_HIGH)
-            ? (Color){ 245, 185, 50, 255 }
-            : ((value == LOGIC_LOW) ? LIGHTGRAY : (Color){ 140, 140, 160, 255 });
-        draw_text_at(symbolic_line, rect.x + 14.0f, rect.y + 28.0f, 14, WHITE);
-        draw_text_at(resolved_line, rect.x + 14.0f, rect.y + 48.0f, 14, value_color);
-    } else {
-        draw_text_at(resolved, rect.x + 14.0f, rect.y + 28.0f, 14, WHITE);
+        values_color = (Color){ 168, 164, 188, 255 };
+        draw_wrapped_text_block(values, text_x, text_y + 5.0f, text_width_limit, 12, 3.0f, 1U, values_color);
     }
 }
 
@@ -1166,6 +1128,7 @@ static void draw_context_why(AppContext *app, Rectangle rect) {
             rect.width - 32.0f,
             12,
             4.0f,
+            2U,
             GRAY
         );
         return;
@@ -1184,6 +1147,7 @@ static void draw_context_why(AppContext *app, Rectangle rect) {
         rect.width - 32.0f,
         13,
         4.0f,
+        3U,
         LIGHTGRAY
     );
 }

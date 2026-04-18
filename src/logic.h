@@ -104,6 +104,8 @@ void logic_free_truth_table(TruthTable *table);
 
 // Expression API
 char* logic_generate_expression(LogicGraph *graph, LogicNode *output_node);
+bool logic_format_equation_symbolic(LogicGraph *graph, LogicNode *node, char *out, size_t len);
+bool logic_format_equation_values(LogicGraph *graph, LogicNode *node, char *out, size_t len);
 bool logic_format_equation_resolved(LogicGraph *graph, LogicNode *node, char *out, size_t len);
 
 #endif // LOGIC_H

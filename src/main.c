@@ -401,7 +401,7 @@ static bool source_watch_refresh(SourceWatch *watch, bool *changed) {
     return true;
 }
 
-static bool load_circuit_into_app(AppContext *app, const char *path, const char *status_prefix) {
+static bool load_circuit_into_app(AppContext *app, const char *path, const char *status_prefix, Rectangle canvas_rect) {
     char error_message[APP_STATUS_MESSAGE_MAX];
     char status_message[APP_STATUS_MESSAGE_MAX];
 
@@ -412,6 +412,7 @@ static bool load_circuit_into_app(AppContext *app, const char *path, const char 
     }
 
     app_set_source_path(app, path);
+    app_frame_graph_in_canvas(app, canvas_rect);
     snprintf(status_message, sizeof(status_message), "%s", status_prefix);
     app_set_source_status(app, status_message);
     return true;
@@ -435,6 +436,7 @@ static const char *parse_load_path(int argc, char **argv) {
 int main(int argc, char **argv) {
     AppContext app;
     WorkspaceLayoutPrefs layout_prefs;
+    WorkspaceFrame initial_frame;
     SourceWatch source_watch;
     const char *load_path;
     Vector2 click_start_pos;
@@ -464,13 +466,15 @@ int main(int argc, char **argv) {
     memset(&source_watch, 0, sizeof(source_watch));
     workspace_layout_init_defaults(&layout_prefs);
     workspace_layout_load_prefs(&layout_prefs);
+    workspace_layout_sanitize_prefs(&layout_prefs, GetScreenWidth(), GetScreenHeight());
+    initial_frame = workspace_layout_compute_frame(&layout_prefs, GetScreenWidth(), GetScreenHeight());
     app_init(&app);
     app.target_graph = NULL;
     app_update_logic(&app);
 
     load_path = parse_load_path(argc, argv);
     if (load_path) {
-        if (load_circuit_into_app(&app, load_path, "Loaded from file")) {
+        if (load_circuit_into_app(&app, load_path, "Loaded from file", initial_frame.canvas_rect)) {
             bool changed;
 
             snprintf(source_watch.path, sizeof(source_watch.path), "%s", load_path);
@@ -587,7 +591,7 @@ int main(int argc, char **argv) {
 
             changed = false;
             if (source_watch_refresh(&source_watch, &changed) && changed) {
-                load_circuit_into_app(&app, source_watch.path, "Reloaded from file");
+                load_circuit_into_app(&app, source_watch.path, "Reloaded from file", frame_layout.canvas_rect);
             }
         }
 

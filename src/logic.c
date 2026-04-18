@@ -192,6 +192,17 @@ static const char *logic_value_digit(LogicValue value) {
 
 static void build_node_expr(LogicGraph *graph, LogicNode *node, char *buf, size_t *pos, size_t size, bool use_values);
 
+static LogicValue logic_node_result_value(const LogicNode *node) {
+    if (node->type == NODE_OUTPUT) {
+        return node->inputs[0].value;
+    }
+    if (node->output_count > 0) {
+        return node->outputs[0].value;
+    }
+
+    return LOGIC_UNKNOWN;
+}
+
 static void build_pin_expr(LogicGraph *graph, LogicPin *sink_pin, char *buf, size_t *pos, size_t size, bool use_values) {
     LogicNet *incoming;
 
@@ -638,6 +649,56 @@ char* logic_generate_expression(LogicGraph *graph, LogicNode *output_node) {
     pos = 0;
     build_pin_expr(graph, &output_node->inputs[0], buf, &pos, 1024U, false);
     return buf;
+}
+
+bool logic_format_equation_symbolic(LogicGraph *graph, LogicNode *node, char *out, size_t len) {
+    size_t pos;
+    LogicValue value;
+    const char *name;
+
+    if (!out || len == 0U || !node) {
+        return false;
+    }
+
+    out[0] = '\0';
+    pos = 0U;
+    name = node->name ? node->name : "out";
+
+    if (node->type == NODE_INPUT || node->type == NODE_GATE_CLOCK) {
+        value = logic_node_result_value(node);
+        logic_append_text(out, &pos, len, name);
+        logic_append_text(out, &pos, len, " = ");
+        logic_append_text(out, &pos, len, logic_value_digit(value));
+        return true;
+    }
+
+    logic_append_text(out, &pos, len, name);
+    logic_append_text(out, &pos, len, " = ");
+    build_node_expr(graph, node, out, &pos, len, false);
+    return true;
+}
+
+bool logic_format_equation_values(LogicGraph *graph, LogicNode *node, char *out, size_t len) {
+    size_t pos;
+    LogicValue value;
+
+    if (!out || len == 0U || !node) {
+        return false;
+    }
+
+    out[0] = '\0';
+    pos = 0U;
+    value = logic_node_result_value(node);
+
+    if (node->type == NODE_INPUT || node->type == NODE_GATE_CLOCK) {
+        logic_append_text(out, &pos, len, logic_value_digit(value));
+        return true;
+    }
+
+    build_node_expr(graph, node, out, &pos, len, true);
+    logic_append_text(out, &pos, len, " -> ");
+    logic_append_text(out, &pos, len, logic_value_digit(value));
+    return true;
 }
 
 bool logic_format_equation_resolved(LogicGraph *graph, LogicNode *node, char *out, size_t len) {

@@ -443,11 +443,11 @@ static void test_example_circuits_load(void) {
     assert(app.graph.net_count == 3U);
     gate = find_node_by_name(&app, "G1");
     assert(gate != NULL);
-    assert(gate->pos.x == 340.0f);
+    assert(gate->pos.x == 440.0f);
     assert(gate->pos.y == 220.0f);
     output = find_node_by_name(&app, "Z");
     assert(output != NULL);
-    assert(output->pos.x == 560.0f);
+    assert(output->pos.x == 700.0f);
     assert(output->pos.y == 240.0f);
     expression = logic_generate_expression(&app.graph, output);
     assert(expression != NULL);
@@ -460,8 +460,8 @@ static void test_example_circuits_load(void) {
     assert(app_move_selected_node(&app, 0, 1));
     assert(app.graph.nets[1].source == &b->outputs[0]);
     moved_pin_pos = ui_output_pin_position(&b->outputs[0]);
-    assert(moved_pin_pos.x == 200.0f);
-    assert(moved_pin_pos.y == 280.0f);
+    assert(moved_pin_pos.x == 240.0f);
+    assert(moved_pin_pos.y == 340.0f);
     app_clear_graph(&app);
 
     app_init(&app);
@@ -534,6 +534,51 @@ static void test_connected_nodes_can_snap_to_straight_wire_alignment(void) {
 
     app_clear_graph(&app);
     printf("test_connected_nodes_can_snap_to_straight_wire_alignment passed!\n");
+}
+
+static void test_multi_input_gate_can_snap_to_connected_inputs_centerline(void) {
+    AppContext app;
+    LogicNode *a;
+    LogicNode *b;
+    LogicNode *gate;
+    Vector2 snapped;
+    Vector2 a_pin;
+    Vector2 b_pin;
+    Vector2 gate_in_0;
+    Vector2 gate_in_1;
+    float source_midpoint;
+    float gate_midpoint;
+
+    app_init(&app);
+    a = app_add_named_node(&app, NODE_INPUT, "A", (Vector2){ 180.0f, 200.0f });
+    b = app_add_named_node(&app, NODE_INPUT, "B", (Vector2){ 180.0f, 300.0f });
+    gate = app_add_named_node(&app, NODE_GATE_AND, "G1", (Vector2){ 440.0f, 220.0f });
+
+    assert(a != NULL);
+    assert(b != NULL);
+    assert(gate != NULL);
+    assert(app_connect_pins(&app, &a->outputs[0], &gate->inputs[0]));
+    assert(app_connect_pins(&app, &b->outputs[0], &gate->inputs[1]));
+
+    snapped = app_snap_live_node_position(&app, gate, (Vector2){ 440.0f, 232.0f });
+    assert(snapped.x == 440.0f);
+    assert(snapped.y == 230.0f);
+
+    gate->pos = snapped;
+    gate->rect.x = snapped.x;
+    gate->rect.y = snapped.y;
+
+    a_pin = ui_output_pin_position(&a->outputs[0]);
+    b_pin = ui_output_pin_position(&b->outputs[0]);
+    gate_in_0 = ui_input_pin_position(&gate->inputs[0]);
+    gate_in_1 = ui_input_pin_position(&gate->inputs[1]);
+
+    source_midpoint = (a_pin.y + b_pin.y) * 0.5f;
+    gate_midpoint = (gate_in_0.y + gate_in_1.y) * 0.5f;
+    assert(fabsf(gate_midpoint - source_midpoint) < 0.001f);
+
+    app_clear_graph(&app);
+    printf("test_multi_input_gate_can_snap_to_connected_inputs_centerline passed!\n");
 }
 
 static void test_view_context_matches_live_state(void) {
@@ -609,6 +654,106 @@ static void test_equation_resolved(void) {
 
     app_clear_graph(&app);
     printf("test_equation_resolved passed!\n");
+}
+
+static void test_equation_symbolic_and_values(void) {
+    AppContext app;
+    LogicNode *a;
+    LogicNode *b;
+    LogicNode *and_gate;
+    LogicNode *out;
+    char buf[256];
+
+    app_init(&app);
+    a = app_add_named_node(&app, NODE_INPUT, "A", (Vector2){ 140.0f, 160.0f });
+    b = app_add_named_node(&app, NODE_INPUT, "B", (Vector2){ 140.0f, 260.0f });
+    and_gate = app_add_named_node(&app, NODE_GATE_AND, "AND1", (Vector2){ 320.0f, 220.0f });
+    out = app_add_named_node(&app, NODE_OUTPUT, "Z", (Vector2){ 520.0f, 220.0f });
+    assert(app_connect_pins(&app, &a->outputs[0], &and_gate->inputs[0]));
+    assert(app_connect_pins(&app, &b->outputs[0], &and_gate->inputs[1]));
+    assert(app_connect_pins(&app, &and_gate->outputs[0], &out->inputs[0]));
+
+    a->outputs[0].value = LOGIC_HIGH;
+    b->outputs[0].value = LOGIC_HIGH;
+    logic_evaluate(&app.graph);
+
+    assert(logic_format_equation_symbolic(&app.graph, out, buf, sizeof(buf)));
+    assert(strcmp(buf, "Z = (A AND B)") == 0);
+
+    assert(logic_format_equation_values(&app.graph, out, buf, sizeof(buf)));
+    assert(strcmp(buf, "(1 AND 1) -> 1") == 0);
+
+    assert(logic_format_equation_symbolic(&app.graph, and_gate, buf, sizeof(buf)));
+    assert(strcmp(buf, "AND1 = (A AND B)") == 0);
+
+    assert(logic_format_equation_values(&app.graph, and_gate, buf, sizeof(buf)));
+    assert(strcmp(buf, "(1 AND 1) -> 1") == 0);
+
+    app_clear_graph(&app);
+    printf("test_equation_symbolic_and_values passed!\n");
+}
+
+static void test_equation_values_with_unknown_inputs(void) {
+    AppContext app;
+    LogicNode *a;
+    LogicNode *and_gate;
+    LogicNode *out;
+    char buf[256];
+
+    app_init(&app);
+    a = app_add_named_node(&app, NODE_INPUT, "A", (Vector2){ 140.0f, 160.0f });
+    and_gate = app_add_named_node(&app, NODE_GATE_AND, "AND1", (Vector2){ 320.0f, 220.0f });
+    out = app_add_named_node(&app, NODE_OUTPUT, "Z", (Vector2){ 520.0f, 220.0f });
+    assert(app_connect_pins(&app, &a->outputs[0], &and_gate->inputs[0]));
+    assert(app_connect_pins(&app, &and_gate->outputs[0], &out->inputs[0]));
+
+    a->outputs[0].value = LOGIC_HIGH;
+    logic_evaluate(&app.graph);
+
+    assert(logic_format_equation_symbolic(&app.graph, out, buf, sizeof(buf)));
+    assert(strcmp(buf, "Z = (A AND ?)") == 0);
+
+    assert(logic_format_equation_values(&app.graph, out, buf, sizeof(buf)));
+    assert(strcmp(buf, "(1 AND ?) -> ?") == 0);
+
+    app_clear_graph(&app);
+    printf("test_equation_values_with_unknown_inputs passed!\n");
+}
+
+static void test_text_fit_with_ellipsis_truncates(void) {
+    char fitted[64];
+    float max_width;
+
+    max_width = text_width("ALPHA...", 13);
+    assert(text_fit_with_ellipsis("ALPHABET SOUP", 13, max_width, fitted, sizeof(fitted)));
+    assert(strcmp(fitted, "ALPHA...") == 0);
+    assert(text_width(fitted, 13) <= max_width);
+
+    printf("test_text_fit_with_ellipsis_truncates passed!\n");
+}
+
+static void test_text_wrap_with_ellipsis_respects_max_lines(void) {
+    WrappedTextLayout layout;
+    char wrapped[128];
+    float max_width;
+    float height;
+
+    max_width = text_width("ALPHA BETA", 12) + 1.0f;
+    layout = text_wrap_with_ellipsis("ALPHA BETA GAMMA", 12, max_width, 2U, wrapped, sizeof(wrapped));
+    assert(layout.line_count == 2U);
+    assert(!layout.truncated);
+    assert(strcmp(wrapped, "ALPHA BETA\nGAMMA") == 0);
+
+    layout = text_wrap_with_ellipsis("ALPHA BETA GAMMA", 12, max_width, 1U, wrapped, sizeof(wrapped));
+    assert(layout.line_count == 1U);
+    assert(layout.truncated);
+    assert(strstr(wrapped, "...") != NULL);
+    assert(text_width(wrapped, 12) <= max_width);
+
+    height = text_wrapped_height("ALPHA BETA GAMMA", 12, max_width, 3.0f, 2U);
+    assert(fabsf(height - 27.0f) < 0.01f);
+
+    printf("test_text_wrap_with_ellipsis_respects_max_lines passed!\n");
 }
 
 static void test_snap_node_position_keeps_single_pin_nodes_on_grid(void) {
@@ -760,6 +905,79 @@ static void test_canvas_zoom_anchor_keeps_world_point_stable(void) {
     printf("test_canvas_zoom_anchor_keeps_world_point_stable passed!\n");
 }
 
+static void test_frame_graph_in_canvas_centers_loaded_circuit(void) {
+    AppContext app;
+    Rectangle canvas;
+    Vector2 graph_center;
+    Vector2 screen_center;
+    char error_message[128];
+    float min_x;
+    float min_y;
+    float max_x;
+    float max_y;
+    uint32_t node_index;
+    bool found_node;
+
+    app_init(&app);
+    assert(circuit_file_load(&app, "examples/and_gate.circ", error_message, sizeof(error_message)));
+
+    canvas = (Rectangle){ 132.0f, 50.0f, 720.0f, 480.0f };
+    assert(app_frame_graph_in_canvas(&app, canvas));
+
+    found_node = false;
+    min_x = 0.0f;
+    min_y = 0.0f;
+    max_x = 0.0f;
+    max_y = 0.0f;
+
+    for (node_index = 0U; node_index < app.graph.node_count; node_index++) {
+        LogicNode *node;
+
+        node = &app.graph.nodes[node_index];
+        if (node->type == (NodeType)-1) {
+            continue;
+        }
+
+        if (!found_node) {
+            min_x = node->rect.x;
+            min_y = node->rect.y;
+            max_x = node->rect.x + node->rect.width;
+            max_y = node->rect.y + node->rect.height;
+            found_node = true;
+            continue;
+        }
+
+        if (node->rect.x < min_x) {
+            min_x = node->rect.x;
+        }
+        if (node->rect.y < min_y) {
+            min_y = node->rect.y;
+        }
+        if (node->rect.x + node->rect.width > max_x) {
+            max_x = node->rect.x + node->rect.width;
+        }
+        if (node->rect.y + node->rect.height > max_y) {
+            max_y = node->rect.y + node->rect.height;
+        }
+    }
+
+    assert(found_node);
+
+    graph_center = (Vector2){
+        (min_x + max_x) * 0.5f,
+        (min_y + max_y) * 0.5f
+    };
+    screen_center = app_canvas_world_to_screen(&app, canvas, graph_center);
+
+    assert(app.canvas_zoom < 1.0f);
+    assert(app.canvas_zoom > 0.9f);
+    assert_float_close(screen_center.x, canvas.x + (canvas.width * 0.5f));
+    assert_float_close(screen_center.y, canvas.y + (canvas.height * 0.5f));
+
+    app_clear_graph(&app);
+    printf("test_frame_graph_in_canvas_centers_loaded_circuit passed!\n");
+}
+
 static void test_canvas_zoom_clamps_to_supported_range(void) {
     assert_float_close(app_canvas_clamp_zoom(0.1f), APP_CANVAS_MIN_ZOOM);
     assert_float_close(app_canvas_clamp_zoom(1.4f), 1.4f);
@@ -905,6 +1123,51 @@ static void test_ui_measure_context_panel_allocates_compare_and_kmap_sections(vo
 
     app_clear_graph(&app);
     printf("test_ui_measure_context_panel_allocates_compare_and_kmap_sections passed!\n");
+}
+
+static void test_ui_measure_context_panel_handles_narrow_widths_with_long_labels(void) {
+    AppContext app;
+    LogicNode *a;
+    LogicNode *b;
+    LogicNode *xor_gate;
+    LogicNode *or_gate;
+    LogicNode *out;
+    float widths[] = { 280.0f, 330.0f, 360.0f };
+    size_t width_index;
+
+    app_init(&app);
+    a = app_add_named_node(&app, NODE_INPUT, "VERY_LONG_INPUT_SIGNAL_A", (Vector2){ 140.0f, 160.0f });
+    b = app_add_named_node(&app, NODE_INPUT, "VERY_LONG_INPUT_SIGNAL_B", (Vector2){ 140.0f, 260.0f });
+    xor_gate = app_add_named_node(&app, NODE_GATE_XOR, "XOR_STAGE_WITH_LONG_NAME", (Vector2){ 320.0f, 220.0f });
+    or_gate = app_add_named_node(&app, NODE_GATE_OR, "OR_STAGE_WITH_LONG_NAME", (Vector2){ 500.0f, 220.0f });
+    out = app_add_named_node(&app, NODE_OUTPUT, "VERY_LONG_OUTPUT_SIGNAL_Z", (Vector2){ 700.0f, 220.0f });
+
+    assert(a != NULL);
+    assert(b != NULL);
+    assert(xor_gate != NULL);
+    assert(or_gate != NULL);
+    assert(out != NULL);
+    assert(app_connect_pins(&app, &a->outputs[0], &xor_gate->inputs[0]));
+    assert(app_connect_pins(&app, &b->outputs[0], &xor_gate->inputs[1]));
+    assert(app_connect_pins(&app, &xor_gate->outputs[0], &or_gate->inputs[0]));
+    assert(app_connect_pins(&app, &a->outputs[0], &or_gate->inputs[1]));
+    assert(app_connect_pins(&app, &or_gate->outputs[0], &out->inputs[0]));
+
+    for (width_index = 0U; width_index < sizeof(widths) / sizeof(widths[0]); width_index++) {
+        Rectangle side_panel;
+        UiContextPanelLayout layout;
+
+        side_panel = (Rectangle){ 1100.0f - widths[width_index], 50.0f, widths[width_index], 646.0f };
+        layout = ui_measure_context_panel(&app, side_panel);
+
+        assert_rect_inside(layout.status_rect, side_panel);
+        assert_rect_inside(layout.equation_rect, side_panel);
+        assert_rect_inside(layout.truth_table_rect, side_panel);
+        assert_rect_inside(layout.why_rect, side_panel);
+    }
+
+    app_clear_graph(&app);
+    printf("test_ui_measure_context_panel_handles_narrow_widths_with_long_labels passed!\n");
 }
 
 static void test_ui_context_truth_table_row_rect_matches_first_visible_row(void) {
@@ -1079,14 +1342,20 @@ int main(void) {
     test_circuit_file_load_failure_keeps_existing_graph();
     test_example_circuits_load();
     test_connected_nodes_can_snap_to_straight_wire_alignment();
+    test_multi_input_gate_can_snap_to_connected_inputs_centerline();
     test_view_context_matches_live_state();
     test_equation_resolved();
+    test_equation_symbolic_and_values();
+    test_equation_values_with_unknown_inputs();
+    test_text_fit_with_ellipsis_truncates();
+    test_text_wrap_with_ellipsis_respects_max_lines();
     test_snap_node_position_keeps_single_pin_nodes_on_grid();
     test_snap_node_position_centers_tall_gates();
     test_delete_selected_wire();
     test_ui_get_wire_at_uses_rendered_wire_path();
     test_canvas_coordinate_transform_round_trip();
     test_canvas_zoom_anchor_keeps_world_point_stable();
+    test_frame_graph_in_canvas_centers_loaded_circuit();
     test_canvas_zoom_clamps_to_supported_range();
     test_canvas_pan_updates_origin_predictably();
     test_ui_get_wire_at_tracks_canvas_viewport();
@@ -1094,6 +1363,7 @@ int main(void) {
     test_canvas_snap_uses_world_coordinates_after_navigation();
     test_ui_measure_context_panel_stays_within_min_window_bounds();
     test_ui_measure_context_panel_allocates_compare_and_kmap_sections();
+    test_ui_measure_context_panel_handles_narrow_widths_with_long_labels();
     test_ui_context_truth_table_row_rect_matches_first_visible_row();
     test_workspace_layout_clamps_panel_sizes();
     test_workspace_layout_drag_updates_each_panel();

@@ -184,6 +184,7 @@ Vector2 app_canvas_origin_after_zoom(
     Vector2 screen_anchor
 );
 void app_reset_canvas_view(AppContext *app);
+bool app_frame_graph_in_canvas(AppContext *app, Rectangle canvas_rect);
 Camera2D app_canvas_camera(const AppContext *app, Rectangle canvas_rect);
 Vector2 app_canvas_screen_to_world(const AppContext *app, Rectangle canvas_rect, Vector2 screen_pos);
 Vector2 app_canvas_world_to_screen(const AppContext *app, Rectangle canvas_rect, Vector2 world_pos);

@@ -72,6 +72,10 @@ static float app_absf(float value) {
     return value < 0.0f ? -value : value;
 }
 
+static float app_minf(float a, float b) {
+    return a < b ? a : b;
+}
+
 static void app_consider_vertical_pin_alignment(
     float candidate_y,
     float desired_y,
@@ -93,6 +97,12 @@ Vector2 app_snap_live_node_position(const AppContext *app, const LogicNode *node
     Vector2 snapped;
     float best_y;
     float best_distance;
+    float input_pin_sum_y;
+    float input_offset_sum;
+    float output_pin_sum_y;
+    float output_offset_sum;
+    uint32_t input_alignment_count;
+    uint32_t output_alignment_count;
     uint32_t net_index;
 
     snapped = app_snap_node_position(position, node ? node->type : NODE_INPUT);
@@ -102,6 +112,12 @@ Vector2 app_snap_live_node_position(const AppContext *app, const LogicNode *node
 
     best_y = snapped.y;
     best_distance = APP_PIN_ALIGN_TOLERANCE + 1.0f;
+    input_pin_sum_y = 0.0f;
+    input_offset_sum = 0.0f;
+    output_pin_sum_y = 0.0f;
+    output_offset_sum = 0.0f;
+    input_alignment_count = 0U;
+    output_alignment_count = 0U;
 
     for (net_index = 0; net_index < app->graph.net_count; net_index++) {
         const LogicNet *net;
@@ -124,6 +140,9 @@ Vector2 app_snap_live_node_position(const AppContext *app, const LogicNode *node
 
                 candidate_y = sink_pin->node->pos.y + app_node_pin_offset_y(sink_pin->node, false, sink_pin->index) - source_offset;
                 app_consider_vertical_pin_alignment(candidate_y, position.y, &best_y, &best_distance);
+                output_pin_sum_y += sink_pin->node->pos.y + app_node_pin_offset_y(sink_pin->node, false, sink_pin->index);
+                output_offset_sum += source_offset;
+                output_alignment_count++;
             }
         }
 
@@ -145,7 +164,24 @@ Vector2 app_snap_live_node_position(const AppContext *app, const LogicNode *node
                 app_node_pin_offset_y(net->source->node, true, net->source->index) -
                 app_node_pin_offset_y(node, false, sink_pin->index);
             app_consider_vertical_pin_alignment(candidate_y, position.y, &best_y, &best_distance);
+            input_pin_sum_y += net->source->node->pos.y + app_node_pin_offset_y(net->source->node, true, net->source->index);
+            input_offset_sum += app_node_pin_offset_y(node, false, sink_pin->index);
+            input_alignment_count++;
         }
+    }
+
+    if (input_alignment_count > 1U) {
+        float centered_input_y;
+
+        centered_input_y = (input_pin_sum_y / (float)input_alignment_count) - (input_offset_sum / (float)input_alignment_count);
+        app_consider_vertical_pin_alignment(centered_input_y, position.y, &best_y, &best_distance);
+    }
+
+    if (output_alignment_count > 1U) {
+        float centered_output_y;
+
+        centered_output_y = (output_pin_sum_y / (float)output_alignment_count) - (output_offset_sum / (float)output_alignment_count);
+        app_consider_vertical_pin_alignment(centered_output_y, position.y, &best_y, &best_distance);
     }
 
     snapped.y = best_y;
@@ -218,6 +254,91 @@ void app_reset_canvas_view(AppContext *app) {
 
     app->canvas_origin = (Vector2){ 0.0f, 0.0f };
     app->canvas_zoom = 1.0f;
+}
+
+bool app_frame_graph_in_canvas(AppContext *app, Rectangle canvas_rect) {
+    static const float world_padding = 80.0f;
+    bool found_node;
+    float min_x;
+    float min_y;
+    float max_x;
+    float max_y;
+    uint32_t node_index;
+    float width;
+    float height;
+    float zoom_x;
+    float zoom_y;
+    float zoom;
+    Vector2 center;
+
+    if (!app || canvas_rect.width <= 0.0f || canvas_rect.height <= 0.0f) {
+        return false;
+    }
+
+    found_node = false;
+    min_x = 0.0f;
+    min_y = 0.0f;
+    max_x = 0.0f;
+    max_y = 0.0f;
+
+    for (node_index = 0; node_index < app->graph.node_count; node_index++) {
+        LogicNode *node;
+
+        node = &app->graph.nodes[node_index];
+        if (node->type == (NodeType)-1) {
+            continue;
+        }
+
+        if (!found_node) {
+            min_x = node->rect.x;
+            min_y = node->rect.y;
+            max_x = node->rect.x + node->rect.width;
+            max_y = node->rect.y + node->rect.height;
+            found_node = true;
+            continue;
+        }
+
+        if (node->rect.x < min_x) {
+            min_x = node->rect.x;
+        }
+        if (node->rect.y < min_y) {
+            min_y = node->rect.y;
+        }
+        if (node->rect.x + node->rect.width > max_x) {
+            max_x = node->rect.x + node->rect.width;
+        }
+        if (node->rect.y + node->rect.height > max_y) {
+            max_y = node->rect.y + node->rect.height;
+        }
+    }
+
+    if (!found_node) {
+        return false;
+    }
+
+    width = (max_x - min_x) + (world_padding * 2.0f);
+    height = (max_y - min_y) + (world_padding * 2.0f);
+    if (width <= 0.0f || height <= 0.0f) {
+        return false;
+    }
+
+    zoom_x = canvas_rect.width / width;
+    zoom_y = canvas_rect.height / height;
+    zoom = app_minf(zoom_x, zoom_y);
+    if (zoom > 1.0f) {
+        zoom = 1.0f;
+    }
+    app->canvas_zoom = app_canvas_clamp_zoom(zoom);
+
+    center = (Vector2){
+        (min_x + max_x) * 0.5f,
+        (min_y + max_y) * 0.5f
+    };
+    app->canvas_origin = (Vector2){
+        center.x - (canvas_rect.width * 0.5f) / app->canvas_zoom,
+        center.y - (canvas_rect.height * 0.5f) / app->canvas_zoom
+    };
+    return true;
 }
 
 Camera2D app_canvas_camera(const AppContext *app, Rectangle canvas_rect) {
