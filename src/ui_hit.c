@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "app_canvas.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,26 +11,26 @@ void ui_build_selection_label(const AppContext *app, char *buffer, size_t buffer
         return;
     }
 
-    if (app->selected_wire_sink &&
-        app->selected_wire_sink->node &&
-        app->selected_wire_sink->node->type != (NodeType)-1) {
-        node = app->selected_wire_sink->node;
+    if (app->selection.selected_wire_sink &&
+        app->selection.selected_wire_sink->node &&
+        app->selection.selected_wire_sink->node->type != (NodeType)-1) {
+        node = app->selection.selected_wire_sink->node;
         snprintf(
             buffer,
             buffer_size,
             "Wire -> %s.in%u",
             node->name ? node->name : "Node",
-            app->selected_wire_sink->index
+            app->selection.selected_wire_sink->index
         );
         return;
     }
 
-    if (app->selected_node && app->selected_node->type != (NodeType)-1) {
+    if (app->selection.selected_node && app->selection.selected_node->type != (NodeType)-1) {
         snprintf(
             buffer,
             buffer_size,
             "%s",
-            app->selected_node->name ? app->selected_node->name : "Node"
+            app->selection.selected_node->name ? app->selection.selected_node->name : "Node"
         );
         return;
     }
@@ -93,7 +94,7 @@ bool ui_truth_table_row_rect_in_panel(const AppContext *app, Rectangle panel, ui
     Rectangle rect;
     float max_y;
 
-    if (!app || !app->current_table || row_index >= app->current_table->row_count) {
+    if (!app || !app->analysis.truth_table || row_index >= app->analysis.truth_table->row_count) {
         return false;
     }
 
@@ -118,17 +119,17 @@ bool ui_truth_table_row_rect_in_panel(const AppContext *app, Rectangle panel, ui
 uint32_t ui_truth_table_visible_rows_in_panel(const AppContext *app, Rectangle panel) {
     uint32_t row_index;
 
-    if (!app || !app->current_table) {
+    if (!app || !app->analysis.truth_table) {
         return 0U;
     }
 
-    for (row_index = 0U; row_index < app->current_table->row_count; row_index++) {
+    for (row_index = 0U; row_index < app->analysis.truth_table->row_count; row_index++) {
         if (!ui_truth_table_row_rect_in_panel(app, panel, row_index, NULL)) {
             return row_index;
         }
     }
 
-    return app->current_table->row_count;
+    return app->analysis.truth_table->row_count;
 }
 
 bool ui_toolbox_item_rect(Rectangle panel, int slot, Rectangle *item_rect) {
@@ -187,7 +188,7 @@ UiContextPanelLayout ui_measure_context_panel(const AppContext *app, Rectangle p
     memset(&layout, 0, sizeof(layout));
     layout.panel_rect = panel;
     layout.show_compare = app && app->mode == MODE_COMPARE;
-    layout.show_kmap = app && app->current_table && app->current_table->input_count == 2;
+    layout.show_kmap = app && app->analysis.truth_table && app->analysis.truth_table->input_count == 2;
 
     section_width = panel.width - (CONTEXT_PANEL_PADDING * 2.0f);
     if (section_width < 0.0f) {
@@ -243,8 +244,8 @@ UiContextPanelLayout ui_measure_context_panel(const AppContext *app, Rectangle p
 
     layout.why_rect = ui_make_rect(panel.x + CONTEXT_PANEL_PADDING, cursor_y, section_width, bottom - cursor_y);
     layout.visible_truth_rows = ui_truth_table_visible_rows_in_panel(app, layout.truth_table_rect);
-    if (app && app->current_table && app->current_table->row_count > layout.visible_truth_rows) {
-        layout.hidden_truth_rows = app->current_table->row_count - layout.visible_truth_rows;
+    if (app && app->analysis.truth_table && app->analysis.truth_table->row_count > layout.visible_truth_rows) {
+        layout.hidden_truth_rows = app->analysis.truth_table->row_count - layout.visible_truth_rows;
     }
 
     return layout;
@@ -258,58 +259,6 @@ bool ui_context_truth_table_row_rect(const AppContext *app, const UiContextPanel
     return ui_truth_table_row_rect_in_panel(app, layout->truth_table_rect, row_index, row_rect);
 }
 
-static float point_segment_distance(Vector2 point, Vector2 start, Vector2 end) {
-    float dx;
-    float dy;
-    float length_squared;
-    float t;
-    float closest_x;
-    float closest_y;
-
-    dx = end.x - start.x;
-    dy = end.y - start.y;
-    length_squared = (dx * dx) + (dy * dy);
-    if (length_squared < 0.0001f) {
-        dx = point.x - start.x;
-        dy = point.y - start.y;
-        return sqrtf((dx * dx) + (dy * dy));
-    }
-
-    t = (((point.x - start.x) * dx) + ((point.y - start.y) * dy)) / length_squared;
-    if (t < 0.0f) {
-        t = 0.0f;
-    } else if (t > 1.0f) {
-        t = 1.0f;
-    }
-
-    closest_x = start.x + (t * dx);
-    closest_y = start.y + (t * dy);
-    dx = point.x - closest_x;
-    dy = point.y - closest_y;
-    return sqrtf((dx * dx) + (dy * dy));
-}
-
-static float distance_to_orthogonal_wire(Vector2 point, Vector2 start, Vector2 end) {
-    Vector2 mid_1;
-    Vector2 mid_2;
-    float distance;
-    float candidate;
-
-    mid_1 = (Vector2){ (start.x + end.x) / 2.0f, start.y };
-    mid_2 = (Vector2){ (start.x + end.x) / 2.0f, end.y };
-
-    distance = point_segment_distance(point, start, mid_1);
-    candidate = point_segment_distance(point, mid_1, mid_2);
-    if (candidate < distance) {
-        distance = candidate;
-    }
-    candidate = point_segment_distance(point, mid_2, end);
-    if (candidate < distance) {
-        distance = candidate;
-    }
-    return distance;
-}
-
 LogicPin* ui_get_wire_at(AppContext *app, Rectangle canvas, Vector2 mouse_pos) {
     LogicGraph *graph;
     LogicPin *best_sink;
@@ -321,24 +270,20 @@ LogicPin* ui_get_wire_at(AppContext *app, Rectangle canvas, Vector2 mouse_pos) {
     graph = &app->graph;
     best_sink = NULL;
     world_pos = app_canvas_screen_to_world(app, canvas, mouse_pos);
-    hit_radius = 7.0f / app_canvas_clamp_zoom(app->canvas_zoom);
+    hit_radius = 7.0f / app_canvas_clamp_zoom(app->canvas.zoom);
     best_distance = hit_radius;
 
     for (i = 0; i < graph->net_count; i++) {
         LogicNet *net;
-        Vector2 start;
         uint8_t sink_index;
 
         net = &graph->nets[i];
         if (!net->source || !net->source->node || net->source->node->type == (NodeType)-1) {
             continue;
         }
-
-        start = ui_pin_position(net->source);
-
         for (sink_index = 0; sink_index < net->sink_count; sink_index++) {
             LogicPin *sink_pin;
-            Vector2 end;
+            UiWirePath path;
             float distance;
 
             sink_pin = net->sinks[sink_index];
@@ -346,8 +291,8 @@ LogicPin* ui_get_wire_at(AppContext *app, Rectangle canvas, Vector2 mouse_pos) {
                 continue;
             }
 
-            end = ui_input_pin_position(sink_pin);
-            distance = distance_to_orthogonal_wire(world_pos, start, end);
+            path = ui_orthogonal_wire_path(ui_pin_position(net->source), ui_input_pin_position(sink_pin));
+            distance = ui_point_to_wire_distance(world_pos, path);
             if (distance < best_distance) {
                 best_distance = distance;
                 best_sink = sink_pin;
@@ -366,7 +311,7 @@ LogicPin* ui_get_pin_at(AppContext *app, Rectangle canvas, Vector2 mouse_pos) {
 
     graph = &app->graph;
     world_pos = app_canvas_screen_to_world(app, canvas, mouse_pos);
-    hit_radius = 18.0f / app_canvas_clamp_zoom(app->canvas_zoom);
+    hit_radius = 18.0f / app_canvas_clamp_zoom(app->canvas.zoom);
     for (i = 0; i < graph->node_count; i++) {
         LogicNode *node;
         uint8_t pin_index;

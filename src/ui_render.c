@@ -1,4 +1,6 @@
 #include "ui_internal.h"
+#include "app_canvas.h"
+#include "app_commands.h"
 #include <math.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -435,7 +437,7 @@ void ui_draw_circuit(AppContext *app, Rectangle canvas) {
             }
 
             end = ui_input_pin_position(sink_pin);
-            is_selected = app->selected_wire_sink == sink_pin;
+            is_selected = app->selection.selected_wire_sink == sink_pin;
             if (is_selected) {
                 draw_orthogonal_wire(start, end, UI_SELECT_VIOLET, 5.0f);
                 draw_glow_circle(start, 6.0f, UI_SELECT_VIOLET);
@@ -446,33 +448,33 @@ void ui_draw_circuit(AppContext *app, Rectangle canvas) {
         }
     }
 
-    if (app->wire_drag_active && app->wire_drag_pin) {
+    if (app->interaction.wire_drag_active && app->interaction.wire_drag_pin) {
         Vector2 start;
         Vector2 end;
         Color wire_color;
         bool valid_target;
 
-        if (app->wire_drag_pin->node->output_count > 0) {
-            start = ui_output_pin_position(app->wire_drag_pin);
+        if (app->interaction.wire_drag_pin->node->output_count > 0) {
+            start = ui_output_pin_position(app->interaction.wire_drag_pin);
         } else {
-            start = ui_input_pin_position(app->wire_drag_pin);
+            start = ui_input_pin_position(app->interaction.wire_drag_pin);
         }
 
-        end = app->wire_drag_pos;
+        end = app->interaction.wire_drag_pos;
         valid_target = false;
-        if (app->wire_hover_pin) {
+        if (app->interaction.wire_hover_pin) {
             valid_target =
-                (app->wire_drag_pin->node->output_count > 0 && app->wire_hover_pin->node->input_count > 0) ||
-                (app->wire_drag_pin->node->input_count > 0 && app->wire_hover_pin->node->output_count > 0);
+                (app->interaction.wire_drag_pin->node->output_count > 0 && app->interaction.wire_hover_pin->node->input_count > 0) ||
+                (app->interaction.wire_drag_pin->node->input_count > 0 && app->interaction.wire_hover_pin->node->output_count > 0);
             wire_color = valid_target ? UI_SELECT_VIOLET : (Color){ 200, 50, 50, 255 };
-            end = ui_pin_position(app->wire_hover_pin);
+            end = ui_pin_position(app->interaction.wire_hover_pin);
         } else {
             wire_color = (Color){ 0, 191, 255, 220 };
         }
 
         draw_orthogonal_wire(start, end, wire_color, 3.0f);
         draw_glow_circle(start, 6.0f, UI_SELECT_VIOLET);
-        if (app->wire_hover_pin) {
+        if (app->interaction.wire_hover_pin) {
             draw_glow_circle(end, valid_target ? 7.0f : 6.0f, wire_color);
         }
     }
@@ -492,7 +494,7 @@ void ui_draw_circuit(AppContext *app, Rectangle canvas) {
         background = (node->type == NODE_INPUT || node->type == NODE_OUTPUT) ?
             (Color){ 56, 56, 56, 255 } :
             (Color){ 40, 40, 40, 255 };
-        selected = app->selected_node == node;
+        selected = app->selection.selected_node == node;
         border = selected ? UI_SELECT_VIOLET : (Color){ 100, 100, 100, 255 };
         border_thick = selected ? 3.0f : 2.0f;
 
@@ -569,15 +571,16 @@ void ui_draw_circuit(AppContext *app, Rectangle canvas) {
                 Color outline;
 
                 pin_pos = ui_input_pin_position(&node->inputs[pin_index]);
-                is_hovered = app->wire_drag_pin == &node->inputs[pin_index] || app->wire_hover_pin == &node->inputs[pin_index];
+                is_hovered = app->interaction.wire_drag_pin == &node->inputs[pin_index] ||
+                    app->interaction.wire_hover_pin == &node->inputs[pin_index];
                 outline = (Color){ 30, 30, 30, 255 };
-                if (app->wire_drag_pin == &node->inputs[pin_index]) {
+                if (app->interaction.wire_drag_pin == &node->inputs[pin_index]) {
                     draw_glow_circle(pin_pos, 6.0f, UI_SELECT_VIOLET);
                     outline = UI_SELECT_VIOLET;
-                } else if (app->wire_hover_pin == &node->inputs[pin_index]) {
+                } else if (app->interaction.wire_hover_pin == &node->inputs[pin_index]) {
                     draw_glow_circle(
                         pin_pos,
-                        app->wire_drag_replacing_sink ? 8.0f : 6.0f,
+                        app->interaction.wire_drag_replacing_sink ? 8.0f : 6.0f,
                         UI_SELECT_VIOLET
                     );
                     outline = UI_SELECT_VIOLET;
@@ -592,12 +595,13 @@ void ui_draw_circuit(AppContext *app, Rectangle canvas) {
                 Color outline;
 
                 pin_pos = ui_output_pin_position(&node->outputs[pin_index]);
-                is_hovered = app->wire_drag_pin == &node->outputs[pin_index] || app->wire_hover_pin == &node->outputs[pin_index];
+                is_hovered = app->interaction.wire_drag_pin == &node->outputs[pin_index] ||
+                    app->interaction.wire_hover_pin == &node->outputs[pin_index];
                 outline = (Color){ 30, 30, 30, 255 };
-                if (app->wire_drag_pin == &node->outputs[pin_index]) {
+                if (app->interaction.wire_drag_pin == &node->outputs[pin_index]) {
                     draw_glow_circle(pin_pos, 6.0f, UI_SELECT_VIOLET);
                     outline = UI_SELECT_VIOLET;
-                } else if (app->wire_hover_pin == &node->outputs[pin_index]) {
+                } else if (app->interaction.wire_hover_pin == &node->outputs[pin_index]) {
                     draw_glow_circle(pin_pos, 6.0f, (Color){ 200, 50, 50, 230 });
                     outline = (Color){ 200, 50, 50, 255 };
                 }
@@ -609,7 +613,7 @@ void ui_draw_circuit(AppContext *app, Rectangle canvas) {
 
     EndMode2D();
 
-    if (app->wire_drag_active || app_tool_places_node(app->active_tool)) {
+    if (app->interaction.wire_drag_active || app_tool_places_node(app->active_tool)) {
         Rectangle hint_rect;
         const char *line_1;
         const char *line_2;
@@ -618,8 +622,8 @@ void ui_draw_circuit(AppContext *app, Rectangle canvas) {
         DrawRectangleRounded(hint_rect, 0.2f, 10, (Color){ 18, 18, 18, 228 });
         DrawRectangleRoundedLinesEx(hint_rect, 0.2f, 10, 1.0f, (Color){ 0, 191, 255, 110 });
 
-        if (app->wire_drag_active) {
-            line_1 = app->wire_drag_replacing_sink ? "Drag wire: replace existing sink" : "Drag wire";
+        if (app->interaction.wire_drag_active) {
+            line_1 = app->interaction.wire_drag_replacing_sink ? "Drag wire: replace existing sink" : "Drag wire";
             line_2 = "Release on a compatible pin to connect. Release on empty space or press Esc to cancel.";
         } else {
             line_1 = "Placement mode";
@@ -641,15 +645,15 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
     uint32_t hidden_rows;
     int text_y;
 
-    draw_panel_shell(panel, "TRUTH TABLE", app->focused_panel == APP_PANEL_TRUTH_TABLE);
+    draw_panel_shell(panel, "TRUTH TABLE", app->selection.focused_panel == APP_PANEL_TRUTH_TABLE);
 
-    if (!app->current_table) {
+    if (!app->analysis.truth_table) {
         draw_text_at("Add inputs and outputs to generate a table.", panel.x + 14.0f, panel.y + 42.0f, 13, GRAY);
         return;
     }
 
     text_y = pixel(panel.y + TRUTH_TABLE_HEADER_Y);
-    cols = (uint32_t)app->current_table->input_count + (uint32_t)app->current_table->output_count;
+    cols = (uint32_t)app->analysis.truth_table->input_count + (uint32_t)app->analysis.truth_table->output_count;
     col_width = panel.width - 32.0f;
     if (col_width < 0.0f) {
         col_width = 0.0f;
@@ -660,13 +664,13 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
         header_width_limit = 0.0f;
     }
     visible_rows = ui_truth_table_visible_rows_in_panel(app, panel);
-    hidden_rows = app->current_table->row_count - visible_rows;
+    hidden_rows = app->analysis.truth_table->row_count - visible_rows;
 
-    for (row_index = 0; row_index < app->current_table->input_count; row_index++) {
+    for (row_index = 0; row_index < app->analysis.truth_table->input_count; row_index++) {
         char label[64];
 
         text_fit_with_ellipsis(
-            app->current_table->inputs[row_index]->name,
+            app->analysis.truth_table->inputs[row_index]->name,
             13,
             header_width_limit,
             label,
@@ -680,11 +684,11 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
             LIGHTGRAY
         );
     }
-    for (output_index = 0; output_index < app->current_table->output_count; output_index++) {
+    for (output_index = 0; output_index < app->analysis.truth_table->output_count; output_index++) {
         char label[64];
 
         text_fit_with_ellipsis(
-            app->current_table->outputs[output_index]->name,
+            app->analysis.truth_table->outputs[output_index]->name,
             13,
             header_width_limit,
             label,
@@ -692,7 +696,7 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
         );
         draw_text_at(
             label,
-            panel.x + TRUTH_TABLE_COLUMN_X_PADDING + ((float)(app->current_table->input_count + output_index) * col_width),
+            panel.x + TRUTH_TABLE_COLUMN_X_PADDING + ((float)(app->analysis.truth_table->input_count + output_index) * col_width),
             (float)text_y,
             13,
             LIGHTGRAY
@@ -712,8 +716,8 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
             break;
         }
 
-        is_live = app->view_ctx.row_valid && app->view_ctx.live_row_index == row_index;
-        is_selected = app->selected_row == row_index;
+        is_live = app->selection.view.row_valid && app->selection.view.live_row_index == row_index;
+        is_selected = app->selection.selected_row == row_index;
         row_y = text_y + (int)((float)row_index * TRUTH_TABLE_ROW_HEIGHT);
 
         if (is_live) {
@@ -735,7 +739,7 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
         for (col_index = 0; col_index < cols; col_index++) {
             const char *value_text;
 
-            value_text = (app->current_table->data[(row_index * cols) + col_index] == LOGIC_HIGH) ? "1" : "0";
+            value_text = (app->analysis.truth_table->data[(row_index * cols) + col_index] == LOGIC_HIGH) ? "1" : "0";
             draw_text_at(
                 value_text,
                 panel.x + TRUTH_TABLE_VALUE_X_PADDING + ((float)col_index * col_width),
@@ -757,15 +761,15 @@ void ui_draw_truth_table(AppContext *app, Rectangle panel) {
 void ui_draw_expression(AppContext *app, Rectangle panel) {
     draw_text_at("RAW", panel.x, panel.y, 11, GRAY);
 
-    if (!app->current_expression) {
+    if (!app->analysis.expression) {
         draw_text_at("No output expression yet.", panel.x, panel.y + 18.0f, 13, GRAY);
         return;
     }
 
-    draw_text_at(app->current_expression, panel.x, panel.y + 18.0f, 13, LIGHTGRAY);
-    if (app->simplified_expression) {
+    draw_text_at(app->analysis.expression, panel.x, panel.y + 18.0f, 13, LIGHTGRAY);
+    if (app->analysis.simplified_expression) {
         draw_text_at("SIMPLIFIED", panel.x, panel.y + 42.0f, 11, GRAY);
-        draw_text_at(app->simplified_expression, panel.x, panel.y + 60.0f, 15, UI_SELECT_VIOLET);
+        draw_text_at(app->analysis.simplified_expression, panel.x, panel.y + 60.0f, 15, UI_SELECT_VIOLET);
     }
 }
 
@@ -776,7 +780,7 @@ void ui_draw_kmap(AppContext *app, Rectangle panel) {
     int origin_y;
     int b;
 
-    if (!app->current_table || app->current_table->input_count != 2) {
+    if (!app->analysis.truth_table || app->analysis.truth_table->input_count != 2) {
         draw_text_at("Available when the circuit has exactly two inputs.", panel.x, panel.y + 18.0f, 13, GRAY);
         return;
     }
@@ -790,7 +794,7 @@ void ui_draw_kmap(AppContext *app, Rectangle panel) {
     draw_text_at("0", (float)(origin_x - 20), (float)(origin_y + (size / 2)), 12, GRAY);
     draw_text_at("1", (float)(origin_x - 20), (float)(origin_y + size + (size / 2)), 12, GRAY);
 
-    cols = (uint32_t)app->current_table->input_count + (uint32_t)app->current_table->output_count;
+    cols = (uint32_t)app->analysis.truth_table->input_count + (uint32_t)app->analysis.truth_table->output_count;
     for (b = 0; b < 2; b++) {
         int a;
 
@@ -801,7 +805,7 @@ void ui_draw_kmap(AppContext *app, Rectangle panel) {
             const char *value_text;
 
             row_index = (a << 1) | b;
-            value = app->current_table->data[((uint32_t)row_index * cols) + 2U];
+            value = app->analysis.truth_table->data[((uint32_t)row_index * cols) + 2U];
             cell_rect = (Rectangle){
                 (float)(origin_x + (a * size)),
                 (float)(origin_y + (b * size)),
@@ -809,11 +813,11 @@ void ui_draw_kmap(AppContext *app, Rectangle panel) {
                 (float)size
             };
             DrawRectangleLinesEx(cell_rect, 1.0f, (Color){ 80, 80, 80, 255 });
-            if (app->view_ctx.row_valid && app->view_ctx.live_row_index == (uint32_t)row_index) {
+            if (app->selection.view.row_valid && app->selection.view.live_row_index == (uint32_t)row_index) {
                 DrawRectangleRec(cell_rect, (Color){ 245, 185, 50, 50 });
             }
-            if (app->selected_row == (uint32_t)row_index &&
-                (!app->view_ctx.row_valid || app->view_ctx.live_row_index != (uint32_t)row_index)) {
+            if (app->selection.selected_row == (uint32_t)row_index &&
+                (!app->selection.view.row_valid || app->selection.view.live_row_index != (uint32_t)row_index)) {
                 DrawRectangleLinesEx(cell_rect, 2.0f, UI_SELECT_VIOLET);
             }
             value_text = (value == LOGIC_HIGH) ? "1" : "0";
@@ -824,7 +828,7 @@ void ui_draw_kmap(AppContext *app, Rectangle panel) {
     {
         uint8_t group_index;
 
-        for (group_index = 0; group_index < app->kmap_group_count; group_index++) {
+        for (group_index = 0; group_index < app->analysis.kmap_group_count; group_index++) {
             KMapGroup *group;
             float min_x;
             float min_y;
@@ -832,7 +836,7 @@ void ui_draw_kmap(AppContext *app, Rectangle panel) {
             float max_y;
             int cell;
 
-            group = &app->kmap_groups[group_index];
+            group = &app->analysis.kmap_groups[group_index];
             min_x = 10000.0f;
             min_y = 10000.0f;
             max_x = 0.0f;
@@ -917,7 +921,7 @@ static void draw_context_status(AppContext *app, Rectangle rect) {
     section_right = rect.x + rect.width - 16.0f;
     text_width_limit = rect.width - 32.0f;
 
-    node = app->view_ctx.selected_node;
+    node = app->selection.view.selected_node;
     if (!node) {
         draw_section_header(rect, "CONTEXT");
         draw_wrapped_text_block(
@@ -1032,7 +1036,7 @@ static void draw_context_equation(AppContext *app, Rectangle rect) {
     draw_section_shell(rect);
     draw_section_header(rect, "EQUATION");
 
-    node = app->view_ctx.selected_node;
+    node = app->selection.view.selected_node;
     if (!node || node->type == NODE_INPUT || node->type == NODE_GATE_CLOCK) {
         draw_wrapped_text_block(
             node ? "Simple signal - no equation to decompose." : "Select a gate to see its boolean equation.",
@@ -1119,7 +1123,7 @@ static void draw_context_why(AppContext *app, Rectangle rect) {
     draw_section_shell(rect);
     draw_section_header(rect, "WHY");
 
-    node = app->view_ctx.selected_node;
+    node = app->selection.view.selected_node;
     if (!node) {
         draw_wrapped_text_block(
             "Selection explains its output here.",
@@ -1156,12 +1160,12 @@ static void draw_context_compare(AppContext *app, Rectangle rect) {
     draw_section_shell(rect);
     draw_section_header(rect, "COMPARE");
 
-    if (app->compare_status == APP_COMPARE_NO_TARGET) {
+    if (app->comparison.status == APP_COMPARE_NO_TARGET) {
         draw_text_at("No reference circuit loaded.", rect.x + 14.0f, rect.y + 32.0f, 13, LIGHTGRAY);
         draw_text_at("Load a target design before comparing.", rect.x + 14.0f, rect.y + 50.0f, 12, GRAY);
         return;
     }
-    if (app->comparison_equivalent) {
+    if (app->comparison.equivalent) {
         draw_text_at("Designs are equivalent.", rect.x + 14.0f, rect.y + 32.0f, 14, (Color){ 76, 175, 80, 255 });
         return;
     }
@@ -1170,7 +1174,7 @@ static void draw_context_compare(AppContext *app, Rectangle rect) {
         char line[64];
 
         draw_text_at("Mismatch detected.", rect.x + 14.0f, rect.y + 32.0f, 14, (Color){ 220, 60, 60, 255 });
-        snprintf(line, sizeof(line), "First failing row: %u", app->first_failing_row);
+        snprintf(line, sizeof(line), "First failing row: %u", app->comparison.first_failing_row);
         draw_text_at(line, rect.x + 14.0f, rect.y + 52.0f, 12, GRAY);
     }
 }
@@ -1380,9 +1384,9 @@ void ui_draw_status_strip(AppContext *app, Rectangle panel) {
     ui_build_selection_label(app, selection_label, sizeof(selection_label));
 
     compare_label = "None";
-    if (app->compare_status == APP_COMPARE_EQUIVALENT) {
+    if (app->comparison.status == APP_COMPARE_EQUIVALENT) {
         compare_label = "Equivalent";
-    } else if (app->compare_status == APP_COMPARE_MISMATCH) {
+    } else if (app->comparison.status == APP_COMPARE_MISMATCH) {
         compare_label = "Mismatch";
     }
 
@@ -1396,20 +1400,20 @@ void ui_draw_status_strip(AppContext *app, Rectangle panel) {
     );
     snprintf(compare_text, sizeof(compare_text), "Compare %s", compare_label);
 
-    if (app->source_path[0] != '\0') {
+    if (app->source.path[0] != '\0') {
         snprintf(
             source_text,
             sizeof(source_text),
             "Source %s   %s",
-            app->source_path,
-            app->source_status
+            app->source.path,
+            app->source.status
         );
     } else {
-        snprintf(source_text, sizeof(source_text), "%s", app->source_status);
+        snprintf(source_text, sizeof(source_text), "%s", app->source.status);
     }
 
     draw_text_at(selected_text, panel.x + 14.0f, panel.y + 7.0f, 11, LIGHTGRAY);
-    draw_text_at(compare_text, panel.x + panel.width - 118.0f, panel.y + 7.0f, 11, app->compare_status == APP_COMPARE_MISMATCH ? (Color){ 200, 50, 50, 255 } : GRAY);
+    draw_text_at(compare_text, panel.x + panel.width - 118.0f, panel.y + 7.0f, 11, app->comparison.status == APP_COMPARE_MISMATCH ? (Color){ 200, 50, 50, 255 } : GRAY);
     draw_text_at(source_text, panel.x + 14.0f, panel.y + 20.0f, 10, GRAY);
     draw_text_at("Shortcuts  V select  1-7 tools  Tab cycle  Space run  . step  Del delete  Esc cancel", panel.x + 14.0f, panel.y + 33.0f, 10, GRAY);
 }
@@ -1500,10 +1504,10 @@ void ui_draw_waveforms(AppContext *app, Rectangle panel) {
                 float height_2;
                 Color line_color;
 
-                waveform_slot_1 = (app->waveform_index + sample_index) % samples;
-                waveform_slot_2 = (app->waveform_index + sample_index + 1U) % samples;
-                value_1 = app->waveforms[node_index][waveform_slot_1];
-                value_2 = app->waveforms[node_index][waveform_slot_2];
+                waveform_slot_1 = (app->simulation.waveform_index + sample_index) % samples;
+                waveform_slot_2 = (app->simulation.waveform_index + sample_index + 1U) % samples;
+                value_1 = app->simulation.waveforms[node_index][waveform_slot_1];
+                value_2 = app->simulation.waveforms[node_index][waveform_slot_2];
                 height_1 = (value_1 == LOGIC_HIGH) ? 5.0f : 25.0f;
                 height_2 = (value_2 == LOGIC_HIGH) ? 5.0f : 25.0f;
                 line_color = (value_1 == LOGIC_HIGH) ? (Color){ 76, 175, 80, 255 } : (Color){ 85, 85, 85, 255 };

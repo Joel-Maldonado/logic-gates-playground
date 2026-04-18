@@ -5,10 +5,14 @@
 #include <string.h>
 #include <unistd.h>
 #include "../src/app.h"
+#include "../src/app_analysis.h"
+#include "../src/app_canvas.h"
+#include "../src/app_commands.h"
 #include "../src/circuit_file.h"
+#include "../src/draw_util.h"
 #include "../src/logic.h"
 #include "../src/ui.h"
-#include "../src/ui_internal.h"
+#include "../src/ui_geometry.h"
 #include "../src/workspace_layout.h"
 
 static void test_gate_and(void) {
@@ -203,9 +207,9 @@ static LogicNode *find_node_by_name(AppContext *app, const char *name) {
 static LogicValue table_output_value(const AppContext *app, uint32_t row_index, uint32_t output_index) {
     uint32_t cols;
 
-    assert(app->current_table != NULL);
-    cols = (uint32_t)app->current_table->input_count + (uint32_t)app->current_table->output_count;
-    return app->current_table->data[(row_index * cols) + (uint32_t)app->current_table->input_count + output_index];
+    assert(app->analysis.truth_table != NULL);
+    cols = (uint32_t)app->analysis.truth_table->input_count + (uint32_t)app->analysis.truth_table->output_count;
+    return app->analysis.truth_table->data[(row_index * cols) + (uint32_t)app->analysis.truth_table->input_count + output_index];
 }
 
 static const LogicNet *find_incoming_net_for_sink(const AppContext *app, const LogicPin *sink_pin) {
@@ -557,7 +561,7 @@ static void test_interactive_construction_flow(void) {
     assert(app_connect_pins(&app, &b->outputs[0], &and_gate->inputs[1]));
     assert(app_connect_pins(&app, &and_gate->outputs[0], &out->inputs[0]));
 
-    assert(strcmp(app.current_expression, "(A AND B)") == 0);
+    assert(strcmp(app.analysis.expression, "(A AND B)") == 0);
     assert(table_output_value(&app, 0U, 0U) == LOGIC_LOW);
     assert(table_output_value(&app, 1U, 0U) == LOGIC_LOW);
     assert(table_output_value(&app, 2U, 0U) == LOGIC_LOW);
@@ -567,8 +571,8 @@ static void test_interactive_construction_flow(void) {
     app_apply_selected_row_to_inputs(&app);
     assert(and_gate->outputs[0].value == LOGIC_LOW);
     assert(out->inputs[0].value == LOGIC_LOW);
-    assert(app.view_ctx.row_valid);
-    assert(app.view_ctx.live_row_index == 2U);
+    assert(app.selection.view.row_valid);
+    assert(app.selection.view.live_row_index == 2U);
     explanation = app_get_node_explanation(&app, and_gate);
     assert(explanation != NULL);
     assert(strstr(explanation, "at least one input is 0") != NULL);
@@ -578,14 +582,14 @@ static void test_interactive_construction_flow(void) {
     app_apply_selected_row_to_inputs(&app);
     assert(and_gate->outputs[0].value == LOGIC_HIGH);
     assert(out->inputs[0].value == LOGIC_HIGH);
-    assert(app.view_ctx.row_valid);
-    assert(app.view_ctx.live_row_index == 3U);
+    assert(app.selection.view.row_valid);
+    assert(app.selection.view.live_row_index == 3U);
 
     assert(app_toggle_input_value(&app, a));
     assert(a->outputs[0].value == LOGIC_LOW);
     assert(and_gate->outputs[0].value == LOGIC_LOW);
-    assert(app.view_ctx.row_valid);
-    assert(app.view_ctx.live_row_index == 1U);
+    assert(app.selection.view.row_valid);
+    assert(app.selection.view.live_row_index == 1U);
 
     app_clear_graph(&app);
     printf("test_interactive_construction_flow passed!\n");
@@ -600,8 +604,8 @@ static void test_compare_mode_without_target(void) {
     assert(app_connect_pins(&app, &app.graph.nodes[0].outputs[0], &app.graph.nodes[1].inputs[0]));
 
     app_set_mode(&app, MODE_COMPARE);
-    assert(app.compare_status == APP_COMPARE_NO_TARGET);
-    assert(!app.comparison_equivalent);
+    assert(app.comparison.status == APP_COMPARE_NO_TARGET);
+    assert(!app.comparison.equivalent);
 
     app_clear_graph(&app);
     printf("test_compare_mode_without_target passed!\n");
@@ -634,13 +638,13 @@ static void test_circuit_file_load(void) {
     loaded = circuit_file_load(&app, temp_path, error_message, sizeof(error_message));
     assert(loaded);
     assert(app.graph.node_count == 4U);
-    assert(app.current_table != NULL);
-    assert(app.current_table->row_count == 4U);
+    assert(app.analysis.truth_table != NULL);
+    assert(app.analysis.truth_table->row_count == 4U);
 
     output = find_node_by_name(&app, "Z");
     assert(output != NULL);
     assert(strcmp(output->name, "Z") == 0);
-    assert(strcmp(app.current_expression, "(A AND B)") == 0);
+    assert(strcmp(app.analysis.expression, "(A AND B)") == 0);
     assert_loaded_layout_is_readable(&app);
     assert_wire_paths_do_not_cross(&app);
 
@@ -762,7 +766,7 @@ static void test_example_circuits_load(void) {
 
     b = find_node_by_name(&app, "B");
     assert(b != NULL);
-    app.selected_node = b;
+    app.selection.selected_node = b;
     assert(app_move_selected_node(&app, 0, 1));
     assert(app.graph.nets[1].source == &b->outputs[0]);
     moved_pin_pos = ui_output_pin_position(&b->outputs[0]);
@@ -774,8 +778,8 @@ static void test_example_circuits_load(void) {
     assert(circuit_file_load(&app, "examples/half_adder.circ", error_message, sizeof(error_message)));
     assert(app.graph.node_count == 6U);
     assert(app.graph.net_count == 4U);
-    assert(app.current_table != NULL);
-    assert(app.current_table->row_count == 4U);
+    assert(app.analysis.truth_table != NULL);
+    assert(app.analysis.truth_table->row_count == 4U);
     assert_loaded_layout_is_readable(&app);
     assert_wire_paths_do_not_cross(&app);
     assert_fanout_mid_columns_share_a_trunk(&app, find_node_by_name(&app, "A"));
@@ -1098,19 +1102,19 @@ static void test_view_context_matches_live_state(void) {
     logic_evaluate(&app.graph);
     app_compute_view_context(&app);
 
-    assert(app.view_ctx.row_valid);
-    assert(app.view_ctx.live_row_index == 3U);
+    assert(app.selection.view.row_valid);
+    assert(app.selection.view.live_row_index == 3U);
 
-    app.selected_row = 0U;
+    app.selection.selected_row = 0U;
     app_compute_view_context(&app);
-    assert(app.view_ctx.live_row_index == 3U);
+    assert(app.selection.view.live_row_index == 3U);
     assert(a->outputs[0].value == LOGIC_HIGH);
     assert(b->outputs[0].value == LOGIC_HIGH);
 
-    app.selected_node = and_gate;
+    app.selection.selected_node = and_gate;
     app_compute_view_context(&app);
-    assert(app.view_ctx.output_valid);
-    assert(app.view_ctx.live_output == LOGIC_HIGH);
+    assert(app.selection.view.output_valid);
+    assert(app.selection.view.live_output == LOGIC_HIGH);
 
     app_clear_graph(&app);
     printf("test_view_context_matches_live_state passed!\n");
@@ -1312,10 +1316,10 @@ static void test_delete_selected_wire(void) {
     assert(app.graph.net_count == 1U);
 
     app_select_wire_by_sink(&app, &output->inputs[0]);
-    assert(app.selected_wire_sink == &output->inputs[0]);
-    assert(app.selected_node == NULL);
+    assert(app.selection.selected_wire_sink == &output->inputs[0]);
+    assert(app.selection.selected_node == NULL);
     assert(app_delete_selected_wire(&app));
-    assert(app.selected_wire_sink == NULL);
+    assert(app.selection.selected_wire_sink == NULL);
     assert(app.graph.net_count == 0U);
     assert(!app_delete_selected_wire(&app));
 
@@ -1465,8 +1469,8 @@ static void test_frame_graph_in_canvas_centers_loaded_circuit(void) {
     };
     screen_center = app_canvas_world_to_screen(&app, canvas, graph_center);
 
-    assert(app.canvas_zoom < 1.0f);
-    assert(app.canvas_zoom > 0.9f);
+    assert(app.canvas.zoom < 1.0f);
+    assert(app.canvas.zoom > 0.9f);
     assert_float_close(screen_center.x, canvas.x + (canvas.width * 0.5f));
     assert_float_close(screen_center.y, canvas.y + (canvas.height * 0.5f));
 
@@ -1485,12 +1489,12 @@ static void test_canvas_pan_updates_origin_predictably(void) {
     AppContext app;
 
     app_init(&app);
-    app.canvas_origin = (Vector2){ 120.0f, 80.0f };
-    app.canvas_zoom = 2.0f;
+    app.canvas.origin = (Vector2){ 120.0f, 80.0f };
+    app.canvas.zoom = 2.0f;
     app_pan_canvas(&app, (Vector2){ 40.0f, -20.0f });
 
-    assert_float_close(app.canvas_origin.x, 100.0f);
-    assert_float_close(app.canvas_origin.y, 90.0f);
+    assert_float_close(app.canvas.origin.x, 100.0f);
+    assert_float_close(app.canvas.origin.y, 90.0f);
     printf("test_canvas_pan_updates_origin_predictably passed!\n");
 }
 
@@ -1511,8 +1515,8 @@ static void test_ui_get_wire_at_tracks_canvas_viewport(void) {
     assert(output != NULL);
     assert(app_connect_pins(&app, &input->outputs[0], &output->inputs[0]));
 
-    app.canvas_origin = (Vector2){ 60.0f, 40.0f };
-    app.canvas_zoom = 1.6f;
+    app.canvas.origin = (Vector2){ 60.0f, 40.0f };
+    app.canvas.zoom = 1.6f;
     hit_screen_pos = app_canvas_world_to_screen(&app, canvas, (Vector2){ 280.0f, 180.0f });
     hit_wire = ui_get_wire_at(&app, canvas, hit_screen_pos);
 
@@ -1534,8 +1538,8 @@ static void test_ui_get_pin_at_tracks_canvas_zoom(void) {
 
     assert(input != NULL);
 
-    app.canvas_origin = (Vector2){ 20.0f, 10.0f };
-    app.canvas_zoom = 2.0f;
+    app.canvas.origin = (Vector2){ 20.0f, 10.0f };
+    app.canvas.zoom = 2.0f;
     hit_screen_pos = app_canvas_world_to_screen(&app, canvas, (Vector2){ 200.0f, 180.0f });
     hit_pin = ui_get_pin_at(&app, canvas, hit_screen_pos);
 
@@ -1553,8 +1557,8 @@ static void test_canvas_snap_uses_world_coordinates_after_navigation(void) {
 
     app_init(&app);
     canvas = (Rectangle){ 132.0f, 50.0f, 720.0f, 480.0f };
-    app.canvas_origin = (Vector2){ 80.0f, 40.0f };
-    app.canvas_zoom = 2.0f;
+    app.canvas.origin = (Vector2){ 80.0f, 40.0f };
+    app.canvas.zoom = 2.0f;
     screen_pos = (Vector2){ 402.0f, 274.0f };
     world_pos = app_canvas_screen_to_world(&app, canvas, screen_pos);
     snapped = app_snap_node_position(world_pos, NODE_GATE_AND);

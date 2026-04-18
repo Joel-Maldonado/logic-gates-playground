@@ -1,5 +1,5 @@
 #include "circuit_layout.h"
-#include "app.h"
+#include "app_canvas.h"
 #include <float.h>
 #include <math.h>
 #include <string.h>

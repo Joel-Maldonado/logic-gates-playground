@@ -73,6 +73,18 @@ typedef struct {
 #define WAVEFORM_SAMPLES 100
 #define APP_PENDING_COMMANDS 32
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpadded"
+#endif
+
+typedef struct {
+    Vector2 origin;
+    float zoom;
+    LogicNode *drag_node;
+    Vector2 drag_offset;
+} AppCanvasState;
+
 typedef struct {
     LogicNode *selected_node;
     LogicValue live_output;
@@ -83,117 +95,91 @@ typedef struct {
 } ViewContext;
 
 typedef struct {
-    LogicGraph graph;
-    LogicValue waveforms[MAX_NODES][WAVEFORM_SAMPLES];
-
-    TruthTable *current_table;
-    char *current_expression;
-    LogicNode *drag_node;
     LogicNode *selected_node;
+    LogicPin *selected_wire_sink;
+    AppPanelFocus focused_panel;
+    uint32_t selected_row;
+    ViewContext view;
+} AppSelectionState;
+
+typedef struct {
+    LogicValue waveforms[MAX_NODES][WAVEFORM_SAMPLES];
+    double last_tick_time;
+    float speed;
+    uint32_t waveform_index;
+    bool active;
+    uint8_t _padding[3];
+} AppSimulationState;
+
+typedef struct {
+    TruthTable *truth_table;
+    char *expression;
+    char *simplified_expression;
+    KMapGroup kmap_groups[MAX_KMAP_GROUPS];
+    uint8_t kmap_group_count;
+    uint8_t _padding[7];
+} AppAnalysisState;
+
+typedef struct {
+    LogicGraph *target_graph;
+    LogicNode *divergence_node;
+    AppCompareStatus status;
+    bool equivalent;
+    uint8_t _padding[3];
+    uint32_t first_failing_row;
+} AppComparisonState;
+
+typedef struct {
+    char path[APP_SOURCE_PATH_MAX];
+    char status[APP_STATUS_MESSAGE_MAX];
+    bool live_reload;
+    uint8_t _padding[7];
+} AppSourceState;
+
+typedef struct {
     LogicPin *active_pin;
     LogicPin *wire_drag_pin;
     LogicPin *wire_hover_pin;
-    LogicPin *selected_wire_sink;
-    char *simplified_expression;
-    LogicGraph *target_graph;
-    LogicNode *divergence_node;
-    EditorCommand pending_commands[APP_PENDING_COMMANDS];
-
-    double last_tick_time;
-    Vector2 drag_offset;
-    Vector2 wire_drag_pos;
-    Vector2 canvas_origin;
-
-    KMapGroup kmap_groups[MAX_KMAP_GROUPS];
-    ViewContext view_ctx;
-
-    AppMode mode;
-    AppTool active_tool;
-    AppPanelFocus focused_panel;
-    AppCompareStatus compare_status;
-    float sim_speed; // Ticks per second
-    float canvas_zoom;
-    uint32_t waveform_index;
-    uint32_t selected_row; // index into TruthTable row
-    uint32_t first_failing_row;
-    uint8_t pending_command_count;
-    uint8_t kmap_group_count;
-    char source_path[APP_SOURCE_PATH_MAX];
-    char source_status[APP_STATUS_MESSAGE_MAX];
-
     bool wiring_active;
     bool wire_drag_active;
     bool wire_drag_replacing_sink;
-    bool sim_active;
-    bool comparison_equivalent;
-    bool source_live_reload;
-    uint8_t _padding[12];
+    uint8_t _padding[5];
+    Vector2 wire_drag_pos;
+} AppInteractionState;
+
+typedef struct {
+    EditorCommand pending_commands[APP_PENDING_COMMANDS];
+    uint8_t count;
+} AppCommandQueue;
+
+typedef struct {
+    LogicGraph graph;
+    AppMode mode;
+    AppTool active_tool;
+    AppCanvasState canvas;
+    AppSelectionState selection;
+    AppSimulationState simulation;
+    AppAnalysisState analysis;
+    AppComparisonState comparison;
+    AppSourceState source;
+    AppInteractionState interaction;
+    AppCommandQueue commands;
 } AppContext;
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 void app_init(AppContext *app);
 void app_update_logic(AppContext *app);
-void app_update_kmap_grouping(AppContext *app);
 LogicNode* app_add_node(AppContext *app, NodeType type, Vector2 pos);
 LogicNode* app_add_named_node(AppContext *app, NodeType type, const char *name, Vector2 pos);
 void app_set_mode(AppContext *app, AppMode mode);
 void app_set_tool(AppContext *app, AppTool tool);
 void app_set_panel_focus(AppContext *app, AppPanelFocus panel);
 void app_select_row(AppContext *app, uint32_t row_index);
-void app_compare_with_target(AppContext *app, LogicGraph *target);
-void app_compute_view_context(AppContext *app);
-void app_apply_selected_row_to_inputs(AppContext *app);
-bool app_toggle_input_value(AppContext *app, LogicNode *node);
-char* app_get_node_explanation(AppContext *app, LogicNode *node);
-void app_queue_command(AppContext *app, EditorCommand command);
-bool app_pop_command(AppContext *app, EditorCommand *command);
-void app_handle_command(AppContext *app, EditorCommand command);
-void app_cancel_interaction(AppContext *app);
-void app_step_simulation(AppContext *app);
-void app_update_simulation(AppContext *app);
-void app_reset_simulation(AppContext *app);
-bool app_delete_selected_node(AppContext *app);
-bool app_delete_selected_wire(AppContext *app);
-void app_select_wire_by_sink(AppContext *app, LogicPin *sink);
-bool app_select_next_node(AppContext *app, int direction);
-bool app_move_selected_node(AppContext *app, int grid_dx, int grid_dy);
 void app_clear_graph(AppContext *app);
 void app_set_source_path(AppContext *app, const char *path);
 void app_set_source_status(AppContext *app, const char *status);
-LogicNode* app_create_node_for_tool(AppContext *app, AppTool tool);
-bool app_select_node_by_index(AppContext *app, uint32_t node_index);
-bool app_activate_pin_by_index(AppContext *app, uint32_t node_index, bool is_output_pin, uint8_t pin_index);
-bool app_select_truth_row_by_index(AppContext *app, uint32_t row_index);
-bool app_begin_wire_drag(AppContext *app, LogicPin *pin, Vector2 pointer_pos);
-void app_update_wire_drag(AppContext *app, LogicPin *hover_pin, Vector2 pointer_pos);
-bool app_commit_wire_drag(AppContext *app, LogicPin *pin);
-void app_cancel_wire_drag(AppContext *app);
-bool app_connect_pins(AppContext *app, LogicPin *first_pin, LogicPin *second_pin);
-void app_node_dimensions(NodeType type, int *width, int *height);
-float app_node_pin_offset_y(const LogicNode *node, bool is_output_pin, uint8_t pin_index);
-Vector2 app_snap_node_position(Vector2 position, NodeType type);
-Vector2 app_snap_live_node_position(const AppContext *app, const LogicNode *node, Vector2 position);
-float app_canvas_clamp_zoom(float zoom);
-Vector2 app_canvas_screen_to_world_at(Vector2 origin, float zoom, Rectangle canvas_rect, Vector2 screen_pos);
-Vector2 app_canvas_world_to_screen_at(Vector2 origin, float zoom, Rectangle canvas_rect, Vector2 world_pos);
-Vector2 app_canvas_origin_after_pan(Vector2 origin, float zoom, Vector2 screen_delta);
-Vector2 app_canvas_origin_after_zoom(
-    Vector2 origin,
-    float current_zoom,
-    float new_zoom,
-    Rectangle canvas_rect,
-    Vector2 screen_anchor
-);
-void app_reset_canvas_view(AppContext *app);
-bool app_frame_graph_in_canvas(AppContext *app, Rectangle canvas_rect);
-Camera2D app_canvas_camera(const AppContext *app, Rectangle canvas_rect);
-Vector2 app_canvas_screen_to_world(const AppContext *app, Rectangle canvas_rect, Vector2 screen_pos);
-Vector2 app_canvas_world_to_screen(const AppContext *app, Rectangle canvas_rect, Vector2 world_pos);
-void app_pan_canvas(AppContext *app, Vector2 screen_delta);
-void app_zoom_canvas_at(AppContext *app, Rectangle canvas_rect, Vector2 screen_anchor, float zoom_factor);
-AppTool app_tool_from_node_type(NodeType type);
-NodeType app_node_type_for_tool(AppTool tool);
-bool app_tool_places_node(AppTool tool);
-const char* app_mode_label(AppMode mode);
-const char* app_tool_label(AppTool tool);
 
 #endif // APP_H

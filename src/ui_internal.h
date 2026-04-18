@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include "draw_util.h"
+#include "ui_geometry.h"
 #include "ui.h"
 
 #define UI_TOOLBOX_ITEM_COUNT 7
@@ -40,28 +41,6 @@ static inline Rectangle ui_make_rect(float x, float y, float width, float height
     }
 
     return (Rectangle){ x, y, width, height };
-}
-
-static inline Vector2 ui_input_pin_position(const LogicPin *pin) {
-    return (Vector2){
-        pin->node->pos.x,
-        pin->node->pos.y + app_node_pin_offset_y(pin->node, false, pin->index)
-    };
-}
-
-static inline Vector2 ui_output_pin_position(const LogicPin *pin) {
-    return (Vector2){
-        pin->node->pos.x + pin->node->rect.width,
-        pin->node->pos.y + app_node_pin_offset_y(pin->node, true, pin->index)
-    };
-}
-
-static inline Vector2 ui_pin_position(const LogicPin *pin) {
-    if (pin->index < pin->node->input_count && &pin->node->inputs[pin->index] == pin) {
-        return ui_input_pin_position(pin);
-    }
-
-    return ui_output_pin_position(pin);
 }
 
 static inline Color ui_logic_color(LogicValue value) {
