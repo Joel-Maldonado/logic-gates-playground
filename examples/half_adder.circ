@@ -1,0 +1,17 @@
+# Half adder:
+#   SUM   = A XOR B
+#   CARRY = A AND B
+
+input A at 140,180
+input B at 140,220
+xor XOR1 at 340,160
+and AND1 at 340,260
+output SUM at 600,180
+output CARRY at 600,280
+
+wire A -> XOR1.in0
+wire B -> XOR1.in1
+wire A -> AND1.in0
+wire B -> AND1.in1
+wire XOR1.out0 -> SUM.in0
+wire AND1.out0 -> CARRY.in0

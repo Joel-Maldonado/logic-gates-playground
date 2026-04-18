@@ -168,7 +168,10 @@ void app_update_wire_drag(AppContext *app, LogicPin *hover_pin, Vector2 pointer_
 bool app_commit_wire_drag(AppContext *app, LogicPin *pin);
 void app_cancel_wire_drag(AppContext *app);
 bool app_connect_pins(AppContext *app, LogicPin *first_pin, LogicPin *second_pin);
+void app_node_dimensions(NodeType type, int *width, int *height);
+float app_node_pin_offset_y(const LogicNode *node, bool is_output_pin, uint8_t pin_index);
 Vector2 app_snap_node_position(Vector2 position, NodeType type);
+Vector2 app_snap_live_node_position(const AppContext *app, const LogicNode *node, Vector2 position);
 float app_canvas_clamp_zoom(float zoom);
 Vector2 app_canvas_screen_to_world_at(Vector2 origin, float zoom, Rectangle canvas_rect, Vector2 screen_pos);
 Vector2 app_canvas_world_to_screen_at(Vector2 origin, float zoom, Rectangle canvas_rect, Vector2 world_pos);

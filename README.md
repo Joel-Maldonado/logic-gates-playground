@@ -34,6 +34,12 @@ You can pass a circuit file to open on launch:
 ```
 
 While the file is open the sim watches it and reloads on change.
+Positions from `.circ` files are snapped on load so file-backed circuits line up with the editor grid.
+
+There are a couple of starter circuits in [`examples/`](/Users/rnoc/Projects/c/logicsim-playground/examples):
+
+- [`examples/and_gate.circ`](/Users/rnoc/Projects/c/logicsim-playground/examples/and_gate.circ) - a minimal two-input AND gate
+- [`examples/half_adder.circ`](/Users/rnoc/Projects/c/logicsim-playground/examples/half_adder.circ) - a small half-adder with `SUM` and `CARRY` outputs
 
 ## Shortcuts
 
@@ -58,4 +64,3 @@ Press `/` in the app for the full list. The useful ones:
   `ui_*` handles drawing and hit-testing; `app.c` holds the editor state
 - `include/` and `lib/` — vendored raylib headers + static lib
 - `tests/` — a tiny test harness for the logic core
-

@@ -5,68 +5,151 @@
 
 #define GRID_SIZE 20.0f
 #define APP_NAME_BUFFER_SIZE 32
+#define APP_PIN_ALIGN_TOLERANCE 12.0f
 
 static uint32_t app_count_nodes_of_type(const AppContext *app, NodeType type);
 void app_cancel_wire_drag(AppContext *app);
 
-static const char *app_node_name(NodeType type, int *width, int *height) {
+static uint8_t app_node_max_pin_count(NodeType type) {
+    if (type == NODE_INPUT || type == NODE_OUTPUT || type == NODE_GATE_NOT || type == NODE_GATE_CLOCK) {
+        return 1U;
+    }
+    if (type == NODE_GATE_DFF || type == NODE_GATE_LATCH) {
+        return 2U;
+    }
+
+    return 2U;
+}
+
+void app_node_dimensions(NodeType type, int *width, int *height) {
+    uint8_t pin_rows;
+
+    if (!width || !height) {
+        return;
+    }
+
+    pin_rows = app_node_max_pin_count(type);
+    *height = (int)((float)GRID_SIZE * 2.0f * (float)pin_rows);
+
+    if (type == NODE_INPUT || type == NODE_OUTPUT || type == NODE_GATE_NOT || type == NODE_GATE_CLOCK) {
+        *width = 60;
+        return;
+    }
+
     *width = 80;
-    *height = 60;
-
-    if (type == NODE_INPUT) {
-        *width = 60;
-        *height = 40;
-        return "IN";
-    }
-    if (type == NODE_OUTPUT) {
-        *width = 60;
-        *height = 40;
-        return "OUT";
-    }
-    if (type == NODE_GATE_AND) {
-        return "AND";
-    }
-    if (type == NODE_GATE_OR) {
-        return "OR";
-    }
-    if (type == NODE_GATE_NOT) {
-        *width = 60;
-        *height = 40;
-        return "NOT";
-    }
-    if (type == NODE_GATE_XOR) {
-        return "XOR";
-    }
-    if (type == NODE_GATE_NAND) {
-        return "NAND";
-    }
-    if (type == NODE_GATE_NOR) {
-        return "NOR";
-    }
-    if (type == NODE_GATE_DFF) {
-        return "DFF";
-    }
-    if (type == NODE_GATE_LATCH) {
-        return "LATCH";
-    }
-
-    *width = 60;
-    *height = 40;
-    return "CLK";
 }
 
 Vector2 app_snap_node_position(Vector2 position, NodeType type) {
-    int width;
-    int height;
-    float center_y;
+    (void)type;
 
-    app_node_name(type, &width, &height);
-
-    center_y = position.y + ((float)height / 2.0f);
     return (Vector2){
         (float)((int)(position.x / GRID_SIZE) * (int)GRID_SIZE),
-        (float)((int)(center_y / GRID_SIZE) * (int)GRID_SIZE) - ((float)height / 2.0f)
+        (float)((int)(position.y / GRID_SIZE) * (int)GRID_SIZE)
     };
+}
+
+float app_node_pin_offset_y(const LogicNode *node, bool is_output_pin, uint8_t pin_index) {
+    uint8_t pin_count;
+    float pitch;
+
+    if (!node) {
+        return 0.0f;
+    }
+
+    pin_count = is_output_pin ? node->output_count : node->input_count;
+    if (pin_count == 0U) {
+        return node->rect.height * 0.5f;
+    }
+    if (pin_count == 1U) {
+        return node->rect.height * 0.5f;
+    }
+
+    pitch = (node->rect.height - (GRID_SIZE * 2.0f)) / (float)(pin_count - 1U);
+    return GRID_SIZE + ((float)pin_index * pitch);
+}
+
+static float app_absf(float value) {
+    return value < 0.0f ? -value : value;
+}
+
+static void app_consider_vertical_pin_alignment(
+    float candidate_y,
+    float desired_y,
+    float *best_y,
+    float *best_distance
+) {
+    float distance;
+
+    distance = app_absf(candidate_y - desired_y);
+    if (distance > APP_PIN_ALIGN_TOLERANCE || distance >= *best_distance) {
+        return;
+    }
+
+    *best_y = candidate_y;
+    *best_distance = distance;
+}
+
+Vector2 app_snap_live_node_position(const AppContext *app, const LogicNode *node, Vector2 position) {
+    Vector2 snapped;
+    float best_y;
+    float best_distance;
+    uint32_t net_index;
+
+    snapped = app_snap_node_position(position, node ? node->type : NODE_INPUT);
+    if (!app || !node || node->type == (NodeType)-1) {
+        return snapped;
+    }
+
+    best_y = snapped.y;
+    best_distance = APP_PIN_ALIGN_TOLERANCE + 1.0f;
+
+    for (net_index = 0; net_index < app->graph.net_count; net_index++) {
+        const LogicNet *net;
+        uint8_t sink_index;
+
+        net = &app->graph.nets[net_index];
+
+        if (net->source && net->source->node == node) {
+            float source_offset;
+
+            source_offset = app_node_pin_offset_y(node, true, net->source->index);
+            for (sink_index = 0; sink_index < net->sink_count; sink_index++) {
+                LogicPin *sink_pin;
+                float candidate_y;
+
+                sink_pin = net->sinks[sink_index];
+                if (!sink_pin || !sink_pin->node || sink_pin->node->type == (NodeType)-1) {
+                    continue;
+                }
+
+                candidate_y = sink_pin->node->pos.y + app_node_pin_offset_y(sink_pin->node, false, sink_pin->index) - source_offset;
+                app_consider_vertical_pin_alignment(candidate_y, position.y, &best_y, &best_distance);
+            }
+        }
+
+        if (!net->source || !net->source->node || net->source->node->type == (NodeType)-1) {
+            continue;
+        }
+
+        for (sink_index = 0; sink_index < net->sink_count; sink_index++) {
+            LogicPin *sink_pin;
+            float candidate_y;
+
+            sink_pin = net->sinks[sink_index];
+            if (!sink_pin || sink_pin->node != node) {
+                continue;
+            }
+
+            candidate_y =
+                net->source->node->pos.y +
+                app_node_pin_offset_y(net->source->node, true, net->source->index) -
+                app_node_pin_offset_y(node, false, sink_pin->index);
+            app_consider_vertical_pin_alignment(candidate_y, position.y, &best_y, &best_distance);
+        }
+    }
+
+    snapped.y = best_y;
+    return snapped;
 }
 
 float app_canvas_clamp_zoom(float zoom) {
@@ -565,11 +648,11 @@ LogicNode* app_add_named_node(AppContext *app, NodeType type, const char *custom
     LogicNode *node;
 
     if (!custom_name) {
-        (void)app_node_name(type, &width, &height);
+        app_node_dimensions(type, &width, &height);
         app_default_node_name(app, type, generated_name, sizeof(generated_name));
         resolved_name = generated_name;
     } else {
-        (void)app_node_name(type, &width, &height);
+        app_node_dimensions(type, &width, &height);
         resolved_name = custom_name;
     }
 
@@ -906,12 +989,17 @@ bool app_select_next_node(AppContext *app, int direction) {
 }
 
 bool app_move_selected_node(AppContext *app, int grid_dx, int grid_dy) {
+    Vector2 moved_position;
+
     if (!app->selected_node) {
         return false;
     }
 
-    app->selected_node->pos.x += (float)grid_dx * GRID_SIZE;
-    app->selected_node->pos.y += (float)grid_dy * GRID_SIZE;
+    moved_position = (Vector2){
+        app->selected_node->pos.x + ((float)grid_dx * GRID_SIZE),
+        app->selected_node->pos.y + ((float)grid_dy * GRID_SIZE)
+    };
+    app->selected_node->pos = app_snap_live_node_position(app, app->selected_node, moved_position);
     app->selected_node->rect.x = app->selected_node->pos.x;
     app->selected_node->rect.y = app->selected_node->pos.y;
     app->focused_panel = APP_PANEL_CANVAS;

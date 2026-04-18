@@ -45,16 +45,14 @@ static inline Rectangle ui_make_rect(float x, float y, float width, float height
 static inline Vector2 ui_input_pin_position(const LogicPin *pin) {
     return (Vector2){
         pin->node->pos.x,
-        pin->node->pos.y +
-            (((float)pin->index + 1.0f) * (pin->node->rect.height / ((float)pin->node->input_count + 1.0f)))
+        pin->node->pos.y + app_node_pin_offset_y(pin->node, false, pin->index)
     };
 }
 
 static inline Vector2 ui_output_pin_position(const LogicPin *pin) {
     return (Vector2){
         pin->node->pos.x + pin->node->rect.width,
-        pin->node->pos.y +
-            (((float)pin->index + 1.0f) * (pin->node->rect.height / ((float)pin->node->output_count + 1.0f)))
+        pin->node->pos.y + app_node_pin_offset_y(pin->node, true, pin->index)
     };
 }
 

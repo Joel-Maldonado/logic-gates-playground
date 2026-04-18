@@ -138,6 +138,98 @@ static LogicNode *find_runtime_node(AppContext *app, const char *name) {
     return NULL;
 }
 
+static LogicNode *rebase_node_pointer(const AppContext *source_app, AppContext *dest_app, LogicNode *node) {
+    ptrdiff_t node_index;
+
+    if (!node) {
+        return NULL;
+    }
+
+    node_index = node - source_app->graph.nodes;
+    if (node_index < 0 || (uint32_t)node_index >= source_app->graph.node_count) {
+        return NULL;
+    }
+
+    return &dest_app->graph.nodes[node_index];
+}
+
+static LogicPin *rebase_pin_pointer(const AppContext *source_app, AppContext *dest_app, LogicPin *pin) {
+    uint32_t node_index;
+
+    if (!pin) {
+        return NULL;
+    }
+
+    for (node_index = 0; node_index < source_app->graph.node_count; node_index++) {
+        const LogicNode *source_node;
+        LogicNode *dest_node;
+
+        source_node = &source_app->graph.nodes[node_index];
+        dest_node = &dest_app->graph.nodes[node_index];
+
+        if (pin >= source_node->inputs && pin < source_node->inputs + MAX_PINS) {
+            ptrdiff_t pin_index;
+
+            pin_index = pin - source_node->inputs;
+            return &dest_node->inputs[pin_index];
+        }
+        if (pin >= source_node->outputs && pin < source_node->outputs + MAX_PINS) {
+            ptrdiff_t pin_index;
+
+            pin_index = pin - source_node->outputs;
+            return &dest_node->outputs[pin_index];
+        }
+    }
+
+    return NULL;
+}
+
+static void rebase_app_pointers(const AppContext *source_app, AppContext *dest_app) {
+    uint32_t i;
+
+    for (i = 0; i < dest_app->graph.node_count; i++) {
+        LogicNode *node;
+        uint8_t pin_index;
+
+        node = &dest_app->graph.nodes[i];
+        for (pin_index = 0; pin_index < MAX_PINS; pin_index++) {
+            node->inputs[pin_index].node = node;
+            node->outputs[pin_index].node = node;
+        }
+    }
+
+    for (i = 0; i < dest_app->graph.net_count; i++) {
+        LogicNet *net;
+        uint8_t sink_index;
+
+        net = &dest_app->graph.nets[i];
+        net->source = rebase_pin_pointer(source_app, dest_app, net->source);
+        for (sink_index = 0; sink_index < net->sink_count; sink_index++) {
+            net->sinks[sink_index] = rebase_pin_pointer(source_app, dest_app, net->sinks[sink_index]);
+        }
+    }
+
+    if (dest_app->current_table) {
+        for (i = 0; i < dest_app->current_table->input_count; i++) {
+            dest_app->current_table->inputs[i] =
+                rebase_node_pointer(source_app, dest_app, dest_app->current_table->inputs[i]);
+        }
+        for (i = 0; i < dest_app->current_table->output_count; i++) {
+            dest_app->current_table->outputs[i] =
+                rebase_node_pointer(source_app, dest_app, dest_app->current_table->outputs[i]);
+        }
+    }
+
+    dest_app->drag_node = rebase_node_pointer(source_app, dest_app, dest_app->drag_node);
+    dest_app->selected_node = rebase_node_pointer(source_app, dest_app, dest_app->selected_node);
+    dest_app->active_pin = rebase_pin_pointer(source_app, dest_app, dest_app->active_pin);
+    dest_app->wire_drag_pin = rebase_pin_pointer(source_app, dest_app, dest_app->wire_drag_pin);
+    dest_app->wire_hover_pin = rebase_pin_pointer(source_app, dest_app, dest_app->wire_hover_pin);
+    dest_app->selected_wire_sink = rebase_pin_pointer(source_app, dest_app, dest_app->selected_wire_sink);
+    dest_app->divergence_node = rebase_node_pointer(source_app, dest_app, dest_app->divergence_node);
+    dest_app->view_ctx.selected_node = rebase_node_pointer(source_app, dest_app, dest_app->view_ctx.selected_node);
+}
+
 static bool parse_endpoint(const char *text, ParsedEndpoint *endpoint) {
     char buffer[PARSED_NAME_MAX];
     char *dot;
@@ -391,6 +483,7 @@ static bool apply_parsed_circuit(AppContext *app, const ParsedCircuit *circuit, 
 
         parsed_node = &circuit->nodes[i];
         position = parsed_node->has_position ? parsed_node->position : default_node_position(i);
+        position = app_snap_node_position(position, parsed_node->type);
         if (!app_add_named_node(&staged_app, parsed_node->type, parsed_node->name, position)) {
             app_clear_graph(&staged_app);
             set_error(error_message, error_message_size, "could not add node to graph", 0U);
@@ -437,6 +530,7 @@ static bool apply_parsed_circuit(AppContext *app, const ParsedCircuit *circuit, 
     staged_app.active_pin = NULL;
     staged_app.wiring_active = false;
     *app = staged_app;
+    rebase_app_pointers(&staged_app, app);
     return true;
 }
 

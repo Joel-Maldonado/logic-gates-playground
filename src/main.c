@@ -707,9 +707,13 @@ int main(int argc, char **argv) {
                 click_moved = true;
             }
             if (click_moved) {
-                app.drag_node->pos.x = world_mouse_pos.x - app.drag_offset.x;
-                app.drag_node->pos.y = world_mouse_pos.y - app.drag_offset.y;
-                app.drag_node->pos = app_snap_node_position(app.drag_node->pos, app.drag_node->type);
+                Vector2 dragged_position;
+
+                dragged_position = (Vector2){
+                    world_mouse_pos.x - app.drag_offset.x,
+                    world_mouse_pos.y - app.drag_offset.y
+                };
+                app.drag_node->pos = app_snap_live_node_position(&app, app.drag_node, dragged_position);
                 app.drag_node->rect.x = app.drag_node->pos.x;
                 app.drag_node->rect.y = app.drag_node->pos.y;
             }

@@ -1,0 +1,12 @@
+# Minimal two-input AND gate.
+# Open with:
+#   ./bin/logicsim examples/and_gate.circ
+
+input A at 140,200
+input B at 140,240
+and G1 at 340,220
+output Z at 560,240
+
+wire A -> G1.in0
+wire B -> G1.in1
+wire G1.out0 -> Z.in0

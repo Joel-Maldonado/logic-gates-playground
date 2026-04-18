@@ -8,6 +8,7 @@
 #include "../src/circuit_file.h"
 #include "../src/logic.h"
 #include "../src/ui.h"
+#include "../src/ui_internal.h"
 #include "../src/workspace_layout.h"
 
 static void test_gate_and(void) {
@@ -346,6 +347,52 @@ static void test_circuit_file_load(void) {
     printf("test_circuit_file_load passed!\n");
 }
 
+static void test_circuit_file_load_snaps_positions(void) {
+    AppContext app;
+    char temp_path[] = "/tmp/mlvd-test-snap-XXXXXX";
+    int fd;
+    bool loaded;
+    char error_message[128];
+    LogicNode *input;
+    LogicNode *gate;
+    LogicNode *output;
+
+    fd = mkstemp(temp_path);
+    assert(fd >= 0);
+    close(fd);
+
+    write_text_file(
+        temp_path,
+        "input A at 143,213\n"
+        "and G1 at 349,227\n"
+        "output Z at 517,241\n"
+        "wire A -> G1.in0\n"
+        "wire G1.out0 -> Z.in0\n"
+    );
+
+    app_init(&app);
+    loaded = circuit_file_load(&app, temp_path, error_message, sizeof(error_message));
+    assert(loaded);
+
+    input = find_node_by_name(&app, "A");
+    gate = find_node_by_name(&app, "G1");
+    output = find_node_by_name(&app, "Z");
+    assert(input != NULL);
+    assert(gate != NULL);
+    assert(output != NULL);
+
+    assert(input->pos.x == 140.0f);
+    assert(input->pos.y == 200.0f);
+    assert(gate->pos.x == 340.0f);
+    assert(gate->pos.y == 220.0f);
+    assert(output->pos.x == 500.0f);
+    assert(output->pos.y == 240.0f);
+
+    unlink(temp_path);
+    app_clear_graph(&app);
+    printf("test_circuit_file_load_snaps_positions passed!\n");
+}
+
 static void test_circuit_file_load_failure_keeps_existing_graph(void) {
     AppContext app;
     char temp_path[] = "/tmp/mlvd-test-invalid-XXXXXX";
@@ -379,6 +426,114 @@ static void test_circuit_file_load_failure_keeps_existing_graph(void) {
     unlink(temp_path);
     app_clear_graph(&app);
     printf("test_circuit_file_load_failure_keeps_existing_graph passed!\n");
+}
+
+static void test_example_circuits_load(void) {
+    AppContext app;
+    LogicNode *b;
+    LogicNode *gate;
+    LogicNode *output;
+    char error_message[128];
+    char *expression;
+    Vector2 moved_pin_pos;
+
+    app_init(&app);
+    assert(circuit_file_load(&app, "examples/and_gate.circ", error_message, sizeof(error_message)));
+    assert(app.graph.node_count == 4U);
+    assert(app.graph.net_count == 3U);
+    gate = find_node_by_name(&app, "G1");
+    assert(gate != NULL);
+    assert(gate->pos.x == 340.0f);
+    assert(gate->pos.y == 220.0f);
+    output = find_node_by_name(&app, "Z");
+    assert(output != NULL);
+    assert(output->pos.x == 560.0f);
+    assert(output->pos.y == 240.0f);
+    expression = logic_generate_expression(&app.graph, output);
+    assert(expression != NULL);
+    assert(strcmp(expression, "(A AND B)") == 0);
+    free(expression);
+
+    b = find_node_by_name(&app, "B");
+    assert(b != NULL);
+    app.selected_node = b;
+    assert(app_move_selected_node(&app, 0, 1));
+    assert(app.graph.nets[1].source == &b->outputs[0]);
+    moved_pin_pos = ui_output_pin_position(&b->outputs[0]);
+    assert(moved_pin_pos.x == 200.0f);
+    assert(moved_pin_pos.y == 280.0f);
+    app_clear_graph(&app);
+
+    app_init(&app);
+    assert(circuit_file_load(&app, "examples/half_adder.circ", error_message, sizeof(error_message)));
+    assert(app.graph.node_count == 6U);
+    assert(app.graph.net_count == 4U);
+    assert(app.current_table != NULL);
+    assert(app.current_table->row_count == 4U);
+    output = find_node_by_name(&app, "SUM");
+    assert(output != NULL);
+    assert(output->pos.x == 600.0f);
+    assert(output->pos.y == 180.0f);
+    output = find_node_by_name(&app, "CARRY");
+    assert(output != NULL);
+    assert(output->pos.x == 600.0f);
+    assert(output->pos.y == 280.0f);
+    assert(table_output_value(&app, 0U, 0U) == LOGIC_LOW);
+    assert(table_output_value(&app, 0U, 1U) == LOGIC_LOW);
+    assert(table_output_value(&app, 1U, 0U) == LOGIC_HIGH);
+    assert(table_output_value(&app, 1U, 1U) == LOGIC_LOW);
+    assert(table_output_value(&app, 2U, 0U) == LOGIC_HIGH);
+    assert(table_output_value(&app, 2U, 1U) == LOGIC_LOW);
+    assert(table_output_value(&app, 3U, 0U) == LOGIC_LOW);
+    assert(table_output_value(&app, 3U, 1U) == LOGIC_HIGH);
+
+    output = find_node_by_name(&app, "SUM");
+    assert(output != NULL);
+    expression = logic_generate_expression(&app.graph, output);
+    assert(expression != NULL);
+    assert(strcmp(expression, "(A XOR B)") == 0);
+    free(expression);
+
+    output = find_node_by_name(&app, "CARRY");
+    assert(output != NULL);
+    expression = logic_generate_expression(&app.graph, output);
+    assert(expression != NULL);
+    assert(strcmp(expression, "(A AND B)") == 0);
+    free(expression);
+
+    app_clear_graph(&app);
+    printf("test_example_circuits_load passed!\n");
+}
+
+static void test_connected_nodes_can_snap_to_straight_wire_alignment(void) {
+    AppContext app;
+    LogicNode *gate;
+    LogicNode *output;
+    Vector2 snapped;
+    Vector2 gate_pin;
+    Vector2 output_pin;
+
+    app_init(&app);
+    gate = app_add_named_node(&app, NODE_GATE_AND, "G1", (Vector2){ 340.0f, 220.0f });
+    output = app_add_named_node(&app, NODE_OUTPUT, "Z", (Vector2){ 560.0f, 240.0f });
+
+    assert(gate != NULL);
+    assert(output != NULL);
+    assert(app_connect_pins(&app, &gate->outputs[0], &output->inputs[0]));
+
+    snapped = app_snap_live_node_position(&app, output, (Vector2){ 560.0f, 236.0f });
+    assert(snapped.x == 560.0f);
+    assert(snapped.y == 240.0f);
+
+    output->pos = snapped;
+    output->rect.x = snapped.x;
+    output->rect.y = snapped.y;
+    gate_pin = ui_output_pin_position(&gate->outputs[0]);
+    output_pin = ui_input_pin_position(&output->inputs[0]);
+    assert(fabsf(gate_pin.y - output_pin.y) < 0.001f);
+
+    app_clear_graph(&app);
+    printf("test_connected_nodes_can_snap_to_straight_wire_alignment passed!\n");
 }
 
 static void test_view_context_matches_live_state(void) {
@@ -472,9 +627,31 @@ static void test_snap_node_position_centers_tall_gates(void) {
     gate_snapped = app_snap_node_position((Vector2){ 143.0f, 213.0f }, NODE_GATE_AND);
 
     assert(gate_snapped.x == 140.0f);
-    assert(gate_snapped.y == 210.0f);
-    assert(((int)gate_snapped.y % 20) == 10);
-    assert(((int)(gate_snapped.y + 30.0f) % 20) == 0);
+    assert(gate_snapped.y == 200.0f);
+    assert(((int)gate_snapped.y % 20) == 0);
+
+    {
+        LogicNode gate;
+        Vector2 in0;
+        Vector2 in1;
+
+        memset(&gate, 0, sizeof(gate));
+        gate.pos = gate_snapped;
+        gate.rect = (Rectangle){ gate_snapped.x, gate_snapped.y, 80.0f, 80.0f };
+        gate.input_count = 2;
+        gate.output_count = 1;
+        gate.inputs[0].node = &gate;
+        gate.inputs[0].index = 0;
+        gate.inputs[1].node = &gate;
+        gate.inputs[1].index = 1;
+
+        in0 = ui_input_pin_position(&gate.inputs[0]);
+        in1 = ui_input_pin_position(&gate.inputs[1]);
+        assert(in0.y == 220.0f);
+        assert(in1.y == 260.0f);
+        assert(((int)in0.y % 20) == 0);
+        assert(((int)in1.y % 20) == 0);
+    }
 
     printf("test_snap_node_position_centers_tall_gates passed!\n");
 }
@@ -669,7 +846,7 @@ static void test_canvas_snap_uses_world_coordinates_after_navigation(void) {
     snapped = app_snap_node_position(world_pos, NODE_GATE_AND);
 
     assert_float_close(snapped.x, 200.0f);
-    assert_float_close(snapped.y, 150.0f);
+    assert_float_close(snapped.y, 140.0f);
     printf("test_canvas_snap_uses_world_coordinates_after_navigation passed!\n");
 }
 
@@ -898,7 +1075,10 @@ int main(void) {
     test_interactive_construction_flow();
     test_compare_mode_without_target();
     test_circuit_file_load();
+    test_circuit_file_load_snaps_positions();
     test_circuit_file_load_failure_keeps_existing_graph();
+    test_example_circuits_load();
+    test_connected_nodes_can_snap_to_straight_wire_alignment();
     test_view_context_matches_live_state();
     test_equation_resolved();
     test_snap_node_position_keeps_single_pin_nodes_on_grid();
