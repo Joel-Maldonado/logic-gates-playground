@@ -10,4 +10,4 @@ Try them with:
 ./bin/logicsim examples/half_adder.circ
 ```
 
-Positions from `.circ` files are snapped on load to match the editor grid.
+Positions in these `.circ` files are optional. On load the app now auto-lays out the graph onto the editor grid.

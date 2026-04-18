@@ -2,12 +2,12 @@
 #   SUM   = A XOR B
 #   CARRY = A AND B
 
-input A at 140,180
-input B at 140,220
-xor XOR1 at 340,160
-and AND1 at 340,260
-output SUM at 600,180
-output CARRY at 600,280
+input A
+input B
+xor XOR1
+and AND1
+output SUM
+output CARRY
 
 wire A -> XOR1.in0
 wire B -> XOR1.in1

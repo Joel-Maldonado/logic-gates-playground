@@ -34,7 +34,7 @@ You can pass a circuit file to open on launch:
 ```
 
 While the file is open the sim watches it and reloads on change.
-Positions from `.circ` files are snapped on load so file-backed circuits line up with the editor grid.
+Circuits loaded from `.circ` files are auto-laid out on the editor grid, so the graph opens with readable spacing instead of relying on file coordinates.
 
 There are a couple of starter circuits in [`examples/`](/Users/rnoc/Projects/c/logicsim-playground/examples):
 

@@ -208,6 +208,308 @@ static LogicValue table_output_value(const AppContext *app, uint32_t row_index, 
     return app->current_table->data[(row_index * cols) + (uint32_t)app->current_table->input_count + output_index];
 }
 
+static const LogicNet *find_incoming_net_for_sink(const AppContext *app, const LogicPin *sink_pin) {
+    uint32_t net_index;
+
+    for (net_index = 0U; net_index < app->graph.net_count; net_index++) {
+        uint8_t sink_index;
+
+        for (sink_index = 0U; sink_index < app->graph.nets[net_index].sink_count; sink_index++) {
+            if (app->graph.nets[net_index].sinks[sink_index] == sink_pin) {
+                return &app->graph.nets[net_index];
+            }
+        }
+    }
+
+    return NULL;
+}
+
+static bool node_is_snapped_to_grid(const LogicNode *node) {
+    float snapped_x;
+    float snapped_y;
+
+    snapped_x = roundf(node->pos.x / 20.0f) * 20.0f;
+    snapped_y = roundf(node->pos.y / 20.0f) * 20.0f;
+    return fabsf(node->pos.x - snapped_x) < 0.001f && fabsf(node->pos.y - snapped_y) < 0.001f;
+}
+
+static bool rectangles_overlap(Rectangle left, Rectangle right) {
+    return left.x < right.x + right.width &&
+        left.x + left.width > right.x &&
+        left.y < right.y + right.height &&
+        left.y + left.height > right.y;
+}
+
+typedef struct {
+    const LogicPin *source;
+    const LogicPin *sink;
+    Vector2 start;
+    Vector2 mid_1;
+    Vector2 mid_2;
+    Vector2 end;
+} OrthogonalWirePath;
+
+static OrthogonalWirePath orthogonal_wire_path_for_sink(const AppContext *app, const LogicPin *sink_pin) {
+    const LogicNet *incoming;
+    OrthogonalWirePath path;
+
+    incoming = find_incoming_net_for_sink(app, sink_pin);
+    assert(incoming != NULL);
+    assert(incoming->source != NULL);
+
+    path.source = incoming->source;
+    path.sink = sink_pin;
+    path.start = ui_output_pin_position(incoming->source);
+    path.end = ui_input_pin_position(sink_pin);
+    path.mid_1 = (Vector2){ (path.start.x + path.end.x) * 0.5f, path.start.y };
+    path.mid_2 = (Vector2){ (path.start.x + path.end.x) * 0.5f, path.end.y };
+    return path;
+}
+
+static bool value_is_strictly_between(float value, float a, float b) {
+    float min_value;
+    float max_value;
+
+    min_value = a < b ? a : b;
+    max_value = a < b ? b : a;
+    return value > min_value + 0.001f && value < max_value - 0.001f;
+}
+
+static bool orthogonal_paths_cross(OrthogonalWirePath left, OrthogonalWirePath right) {
+    bool left_vertical_hits_right_first;
+    bool left_vertical_hits_right_last;
+    bool right_vertical_hits_left_first;
+    bool right_vertical_hits_left_last;
+
+    left_vertical_hits_right_first =
+        value_is_strictly_between(left.mid_1.x, right.start.x, right.mid_1.x) &&
+        value_is_strictly_between(right.start.y, left.mid_1.y, left.mid_2.y);
+    left_vertical_hits_right_last =
+        value_is_strictly_between(left.mid_1.x, right.mid_2.x, right.end.x) &&
+        value_is_strictly_between(right.end.y, left.mid_1.y, left.mid_2.y);
+    right_vertical_hits_left_first =
+        value_is_strictly_between(right.mid_1.x, left.start.x, left.mid_1.x) &&
+        value_is_strictly_between(left.start.y, right.mid_1.y, right.mid_2.y);
+    right_vertical_hits_left_last =
+        value_is_strictly_between(right.mid_1.x, left.mid_2.x, left.end.x) &&
+        value_is_strictly_between(left.end.y, right.mid_1.y, right.mid_2.y);
+
+    return left_vertical_hits_right_first ||
+        left_vertical_hits_right_last ||
+        right_vertical_hits_left_first ||
+        right_vertical_hits_left_last;
+}
+
+static void assert_loaded_layout_is_readable(const AppContext *app) {
+    uint32_t left_index;
+
+    for (left_index = 0U; left_index < app->graph.node_count; left_index++) {
+        const LogicNode *left_node;
+        uint32_t right_index;
+
+        left_node = &app->graph.nodes[left_index];
+        if (left_node->type == (NodeType)-1) {
+            continue;
+        }
+
+        assert(node_is_snapped_to_grid(left_node));
+        for (right_index = left_index + 1U; right_index < app->graph.node_count; right_index++) {
+            const LogicNode *right_node;
+
+            right_node = &app->graph.nodes[right_index];
+            if (right_node->type == (NodeType)-1) {
+                continue;
+            }
+
+            assert(!rectangles_overlap(left_node->rect, right_node->rect));
+        }
+    }
+
+    for (left_index = 0U; left_index < app->graph.net_count; left_index++) {
+        const LogicNet *net;
+        uint8_t sink_index;
+
+        net = &app->graph.nets[left_index];
+        assert(net->source != NULL);
+        for (sink_index = 0U; sink_index < net->sink_count; sink_index++) {
+            LogicPin *sink_pin;
+            Vector2 start;
+            Vector2 end;
+
+            sink_pin = net->sinks[sink_index];
+            assert(sink_pin != NULL);
+            start = ui_output_pin_position(net->source);
+            end = ui_input_pin_position(sink_pin);
+            assert(start.x < end.x);
+        }
+    }
+
+    for (left_index = 0U; left_index < app->graph.node_count; left_index++) {
+        const LogicNode *node;
+
+        node = &app->graph.nodes[left_index];
+        if (node->type == (NodeType)-1) {
+            continue;
+        }
+
+        if (node->type == NODE_INPUT || node->type == NODE_GATE_CLOCK) {
+            uint32_t net_index;
+
+            for (net_index = 0U; net_index < app->graph.net_count; net_index++) {
+                const LogicNet *net;
+                uint8_t sink_index;
+
+                net = &app->graph.nets[net_index];
+                if (!net->source || net->source->node != node) {
+                    continue;
+                }
+                for (sink_index = 0U; sink_index < net->sink_count; sink_index++) {
+                    assert(node->pos.x < net->sinks[sink_index]->node->pos.x);
+                }
+            }
+        }
+
+        if (node->type == NODE_OUTPUT) {
+            const LogicNet *incoming;
+
+            incoming = find_incoming_net_for_sink(app, &node->inputs[0]);
+            assert(incoming != NULL);
+            assert(incoming->source != NULL);
+            assert(incoming->source->node->pos.x < node->pos.x);
+        }
+    }
+}
+
+static void assert_wire_paths_do_not_cross(const AppContext *app) {
+    LogicPin *sink_pins[MAX_NETS * MAX_PINS];
+    uint32_t sink_count;
+    uint32_t net_index;
+    uint32_t left_index;
+
+    sink_count = 0U;
+    for (net_index = 0U; net_index < app->graph.net_count; net_index++) {
+        uint8_t sink_index;
+
+        for (sink_index = 0U; sink_index < app->graph.nets[net_index].sink_count; sink_index++) {
+            sink_pins[sink_count++] = app->graph.nets[net_index].sinks[sink_index];
+        }
+    }
+
+    for (left_index = 0U; left_index < sink_count; left_index++) {
+        OrthogonalWirePath left_path;
+        uint32_t right_index;
+
+        left_path = orthogonal_wire_path_for_sink(app, sink_pins[left_index]);
+        for (right_index = left_index + 1U; right_index < sink_count; right_index++) {
+            OrthogonalWirePath right_path;
+
+            right_path = orthogonal_wire_path_for_sink(app, sink_pins[right_index]);
+            if (left_path.source->node == right_path.source->node ||
+                left_path.sink->node == right_path.sink->node) {
+                continue;
+            }
+            assert(!orthogonal_paths_cross(left_path, right_path));
+        }
+    }
+}
+
+static void assert_fanout_mid_columns_share_a_trunk(const AppContext *app, LogicNode *source_node) {
+    float mid_x[MAX_PINS];
+    uint32_t mid_count;
+    uint32_t net_index;
+
+    assert(source_node != NULL);
+    mid_count = 0U;
+    for (net_index = 0U; net_index < app->graph.net_count; net_index++) {
+        const LogicNet *net;
+        uint8_t sink_index;
+
+        net = &app->graph.nets[net_index];
+        if (!net->source || net->source->node != source_node) {
+            continue;
+        }
+
+        for (sink_index = 0U; sink_index < net->sink_count; sink_index++) {
+            OrthogonalWirePath path;
+
+            path = orthogonal_wire_path_for_sink(app, net->sinks[sink_index]);
+            mid_x[mid_count++] = path.mid_1.x;
+        }
+    }
+
+    if (mid_count > 1U) {
+        uint32_t mid_index;
+
+        for (mid_index = 1U; mid_index < mid_count; mid_index++) {
+            assert(fabsf(mid_x[0] - mid_x[mid_index]) < 0.001f);
+        }
+    }
+}
+
+static Rectangle named_nodes_bounds(AppContext *app, const char * const *names, uint32_t name_count) {
+    Rectangle bounds;
+    float min_x;
+    float min_y;
+    float max_x;
+    float max_y;
+    uint32_t name_index;
+
+    min_x = 0.0f;
+    min_y = 0.0f;
+    max_x = 0.0f;
+    max_y = 0.0f;
+    for (name_index = 0U; name_index < name_count; name_index++) {
+        LogicNode *node;
+
+        node = find_node_by_name(app, names[name_index]);
+        assert(node != NULL);
+        if (name_index == 0U) {
+            min_x = node->rect.x;
+            min_y = node->rect.y;
+            max_x = node->rect.x + node->rect.width;
+            max_y = node->rect.y + node->rect.height;
+            continue;
+        }
+
+        if (node->rect.x < min_x) {
+            min_x = node->rect.x;
+        }
+        if (node->rect.y < min_y) {
+            min_y = node->rect.y;
+        }
+        if (node->rect.x + node->rect.width > max_x) {
+            max_x = node->rect.x + node->rect.width;
+        }
+        if (node->rect.y + node->rect.height > max_y) {
+            max_y = node->rect.y + node->rect.height;
+        }
+    }
+
+    bounds = (Rectangle){ min_x, min_y, max_x - min_x, max_y - min_y };
+    return bounds;
+}
+
+static void assert_named_node_positions_match(
+    AppContext *left_app,
+    AppContext *right_app,
+    const char * const *names,
+    uint32_t name_count
+) {
+    uint32_t name_index;
+
+    for (name_index = 0U; name_index < name_count; name_index++) {
+        LogicNode *left_node;
+        LogicNode *right_node;
+
+        left_node = find_node_by_name(left_app, names[name_index]);
+        right_node = find_node_by_name(right_app, names[name_index]);
+        assert(left_node != NULL);
+        assert(right_node != NULL);
+            assert(fabsf(left_node->pos.x - right_node->pos.x) < 0.001f);
+            assert(fabsf(left_node->pos.y - right_node->pos.y) < 0.001f);
+    }
+}
+
 static void test_app_default_names(void) {
     AppContext app;
     LogicNode *a;
@@ -338,59 +640,62 @@ static void test_circuit_file_load(void) {
     output = find_node_by_name(&app, "Z");
     assert(output != NULL);
     assert(strcmp(output->name, "Z") == 0);
-    assert(output->pos.x == 500.0f);
-    assert(output->pos.y == 240.0f);
     assert(strcmp(app.current_expression, "(A AND B)") == 0);
+    assert_loaded_layout_is_readable(&app);
+    assert_wire_paths_do_not_cross(&app);
 
     unlink(temp_path);
     app_clear_graph(&app);
     printf("test_circuit_file_load passed!\n");
 }
 
-static void test_circuit_file_load_snaps_positions(void) {
-    AppContext app;
-    char temp_path[] = "/tmp/mlvd-test-snap-XXXXXX";
+static void test_circuit_file_load_ignores_explicit_positions(void) {
+    AppContext first_app;
+    AppContext second_app;
+    char first_path[] = "/tmp/mlvd-test-layout-a-XXXXXX";
+    char second_path[] = "/tmp/mlvd-test-layout-b-XXXXXX";
+    const char *names[] = { "A", "G1", "Z" };
     int fd;
-    bool loaded;
     char error_message[128];
-    LogicNode *input;
-    LogicNode *gate;
-    LogicNode *output;
 
-    fd = mkstemp(temp_path);
+    fd = mkstemp(first_path);
+    assert(fd >= 0);
+    close(fd);
+    fd = mkstemp(second_path);
     assert(fd >= 0);
     close(fd);
 
     write_text_file(
-        temp_path,
+        first_path,
         "input A at 143,213\n"
         "and G1 at 349,227\n"
         "output Z at 517,241\n"
         "wire A -> G1.in0\n"
         "wire G1.out0 -> Z.in0\n"
     );
+    write_text_file(
+        second_path,
+        "input A at 860,520\n"
+        "and G1 at 120,80\n"
+        "output Z at 40,940\n"
+        "wire A -> G1.in0\n"
+        "wire G1.out0 -> Z.in0\n"
+    );
 
-    app_init(&app);
-    loaded = circuit_file_load(&app, temp_path, error_message, sizeof(error_message));
-    assert(loaded);
+    app_init(&first_app);
+    assert(circuit_file_load(&first_app, first_path, error_message, sizeof(error_message)));
+    app_init(&second_app);
+    assert(circuit_file_load(&second_app, second_path, error_message, sizeof(error_message)));
 
-    input = find_node_by_name(&app, "A");
-    gate = find_node_by_name(&app, "G1");
-    output = find_node_by_name(&app, "Z");
-    assert(input != NULL);
-    assert(gate != NULL);
-    assert(output != NULL);
+    assert_named_node_positions_match(&first_app, &second_app, names, 3U);
+    assert_loaded_layout_is_readable(&first_app);
+    assert_loaded_layout_is_readable(&second_app);
 
-    assert(input->pos.x == 140.0f);
-    assert(input->pos.y == 200.0f);
-    assert(gate->pos.x == 340.0f);
-    assert(gate->pos.y == 220.0f);
-    assert(output->pos.x == 500.0f);
-    assert(output->pos.y == 240.0f);
-
-    unlink(temp_path);
-    app_clear_graph(&app);
-    printf("test_circuit_file_load_snaps_positions passed!\n");
+    unlink(first_path);
+    unlink(second_path);
+    app_clear_graph(&first_app);
+    app_clear_graph(&second_app);
+    printf("test_circuit_file_load_ignores_explicit_positions passed!\n");
 }
 
 static void test_circuit_file_load_failure_keeps_existing_graph(void) {
@@ -432,7 +737,9 @@ static void test_example_circuits_load(void) {
     AppContext app;
     LogicNode *b;
     LogicNode *gate;
+    LogicNode *xor_gate;
     LogicNode *output;
+    LogicNode *carry;
     char error_message[128];
     char *expression;
     Vector2 moved_pin_pos;
@@ -441,14 +748,13 @@ static void test_example_circuits_load(void) {
     assert(circuit_file_load(&app, "examples/and_gate.circ", error_message, sizeof(error_message)));
     assert(app.graph.node_count == 4U);
     assert(app.graph.net_count == 3U);
+    assert_loaded_layout_is_readable(&app);
+    assert_wire_paths_do_not_cross(&app);
     gate = find_node_by_name(&app, "G1");
     assert(gate != NULL);
-    assert(gate->pos.x == 440.0f);
-    assert(gate->pos.y == 220.0f);
     output = find_node_by_name(&app, "Z");
     assert(output != NULL);
-    assert(output->pos.x == 700.0f);
-    assert(output->pos.y == 240.0f);
+    assert(gate->pos.x < output->pos.x);
     expression = logic_generate_expression(&app.graph, output);
     assert(expression != NULL);
     assert(strcmp(expression, "(A AND B)") == 0);
@@ -460,8 +766,8 @@ static void test_example_circuits_load(void) {
     assert(app_move_selected_node(&app, 0, 1));
     assert(app.graph.nets[1].source == &b->outputs[0]);
     moved_pin_pos = ui_output_pin_position(&b->outputs[0]);
-    assert(moved_pin_pos.x == 240.0f);
-    assert(moved_pin_pos.y == 340.0f);
+    assert(fabsf(moved_pin_pos.x - (b->pos.x + b->rect.width)) < 0.001f);
+    assert(fabsf(moved_pin_pos.y - (b->pos.y + app_node_pin_offset_y(b, true, 0U))) < 0.001f);
     app_clear_graph(&app);
 
     app_init(&app);
@@ -470,14 +776,30 @@ static void test_example_circuits_load(void) {
     assert(app.graph.net_count == 4U);
     assert(app.current_table != NULL);
     assert(app.current_table->row_count == 4U);
+    assert_loaded_layout_is_readable(&app);
+    assert_wire_paths_do_not_cross(&app);
+    assert_fanout_mid_columns_share_a_trunk(&app, find_node_by_name(&app, "A"));
+    assert_fanout_mid_columns_share_a_trunk(&app, find_node_by_name(&app, "B"));
+    xor_gate = find_node_by_name(&app, "XOR1");
+    gate = find_node_by_name(&app, "AND1");
+    assert(xor_gate != NULL);
+    assert(gate != NULL);
     output = find_node_by_name(&app, "SUM");
     assert(output != NULL);
-    assert(output->pos.x == 600.0f);
-    assert(output->pos.y == 180.0f);
-    output = find_node_by_name(&app, "CARRY");
-    assert(output != NULL);
-    assert(output->pos.x == 600.0f);
-    assert(output->pos.y == 280.0f);
+    carry = find_node_by_name(&app, "CARRY");
+    assert(carry != NULL);
+    assert(xor_gate->pos.y < gate->pos.y);
+    assert(output->pos.y < carry->pos.y);
+    assert(fabsf(
+        (xor_gate->rect.y + (xor_gate->rect.height * 0.5f)) -
+        (gate->rect.y + (gate->rect.height * 0.5f))
+    ) >= 120.0f);
+    assert(fabsf(
+        (output->rect.y + (output->rect.height * 0.5f)) -
+        (carry->rect.y + (carry->rect.height * 0.5f))
+    ) >= 100.0f);
+    assert(output->pos.x > xor_gate->pos.x);
+    assert(carry->pos.x > gate->pos.x);
     assert(table_output_value(&app, 0U, 0U) == LOGIC_LOW);
     assert(table_output_value(&app, 0U, 1U) == LOGIC_LOW);
     assert(table_output_value(&app, 1U, 0U) == LOGIC_HIGH);
@@ -494,15 +816,189 @@ static void test_example_circuits_load(void) {
     assert(strcmp(expression, "(A XOR B)") == 0);
     free(expression);
 
-    output = find_node_by_name(&app, "CARRY");
-    assert(output != NULL);
-    expression = logic_generate_expression(&app.graph, output);
+    expression = logic_generate_expression(&app.graph, carry);
     assert(expression != NULL);
     assert(strcmp(expression, "(A AND B)") == 0);
     free(expression);
 
     app_clear_graph(&app);
     printf("test_example_circuits_load passed!\n");
+}
+
+static void test_circuit_file_load_uses_declaration_order_for_symmetric_layers(void) {
+    AppContext sum_first_app;
+    AppContext carry_first_app;
+    char sum_first_path[] = "/tmp/mlvd-test-order-a-XXXXXX";
+    char carry_first_path[] = "/tmp/mlvd-test-order-b-XXXXXX";
+    int fd;
+    char error_message[128];
+    LogicNode *sum_first_xor;
+    LogicNode *sum_first_and;
+    LogicNode *sum_first_sum;
+    LogicNode *sum_first_carry;
+    LogicNode *carry_first_xor;
+    LogicNode *carry_first_and;
+    LogicNode *carry_first_sum;
+    LogicNode *carry_first_carry;
+
+    fd = mkstemp(sum_first_path);
+    assert(fd >= 0);
+    close(fd);
+    fd = mkstemp(carry_first_path);
+    assert(fd >= 0);
+    close(fd);
+
+    write_text_file(
+        sum_first_path,
+        "input A\n"
+        "input B\n"
+        "xor XOR1\n"
+        "and AND1\n"
+        "output SUM\n"
+        "output CARRY\n"
+        "wire A -> XOR1.in0\n"
+        "wire B -> XOR1.in1\n"
+        "wire A -> AND1.in0\n"
+        "wire B -> AND1.in1\n"
+        "wire XOR1.out0 -> SUM.in0\n"
+        "wire AND1.out0 -> CARRY.in0\n"
+    );
+    write_text_file(
+        carry_first_path,
+        "input A\n"
+        "input B\n"
+        "and AND1\n"
+        "xor XOR1\n"
+        "output CARRY\n"
+        "output SUM\n"
+        "wire A -> XOR1.in0\n"
+        "wire B -> AND1.in1\n"
+        "wire A -> AND1.in0\n"
+        "wire B -> XOR1.in1\n"
+        "wire AND1.out0 -> CARRY.in0\n"
+        "wire XOR1.out0 -> SUM.in0\n"
+    );
+
+    app_init(&sum_first_app);
+    assert(circuit_file_load(&sum_first_app, sum_first_path, error_message, sizeof(error_message)));
+    app_init(&carry_first_app);
+    assert(circuit_file_load(&carry_first_app, carry_first_path, error_message, sizeof(error_message)));
+
+    sum_first_xor = find_node_by_name(&sum_first_app, "XOR1");
+    sum_first_and = find_node_by_name(&sum_first_app, "AND1");
+    sum_first_sum = find_node_by_name(&sum_first_app, "SUM");
+    sum_first_carry = find_node_by_name(&sum_first_app, "CARRY");
+    carry_first_xor = find_node_by_name(&carry_first_app, "XOR1");
+    carry_first_and = find_node_by_name(&carry_first_app, "AND1");
+    carry_first_sum = find_node_by_name(&carry_first_app, "SUM");
+    carry_first_carry = find_node_by_name(&carry_first_app, "CARRY");
+
+    assert(sum_first_xor != NULL);
+    assert(sum_first_and != NULL);
+    assert(sum_first_sum != NULL);
+    assert(sum_first_carry != NULL);
+    assert(carry_first_xor != NULL);
+    assert(carry_first_and != NULL);
+    assert(carry_first_sum != NULL);
+    assert(carry_first_carry != NULL);
+
+    assert(sum_first_xor->pos.y < sum_first_and->pos.y);
+    assert(sum_first_sum->pos.y < sum_first_carry->pos.y);
+    assert(carry_first_and->pos.y < carry_first_xor->pos.y);
+    assert(carry_first_carry->pos.y < carry_first_sum->pos.y);
+    assert_loaded_layout_is_readable(&sum_first_app);
+    assert_loaded_layout_is_readable(&carry_first_app);
+    assert_wire_paths_do_not_cross(&sum_first_app);
+    assert_wire_paths_do_not_cross(&carry_first_app);
+
+    unlink(sum_first_path);
+    unlink(carry_first_path);
+    app_clear_graph(&sum_first_app);
+    app_clear_graph(&carry_first_app);
+    printf("test_circuit_file_load_uses_declaration_order_for_symmetric_layers passed!\n");
+}
+
+static void test_circuit_file_load_packs_disconnected_components(void) {
+    AppContext app;
+    char temp_path[] = "/tmp/mlvd-test-components-XXXXXX";
+    const char *left_component[] = { "A", "B", "G1", "Z" };
+    const char *right_component[] = { "C", "D", "G2", "Y" };
+    Rectangle left_bounds;
+    Rectangle right_bounds;
+    int fd;
+    char error_message[128];
+
+    fd = mkstemp(temp_path);
+    assert(fd >= 0);
+    close(fd);
+
+    write_text_file(
+        temp_path,
+        "input A\n"
+        "input B\n"
+        "and G1\n"
+        "output Z\n"
+        "input C\n"
+        "input D\n"
+        "xor G2\n"
+        "output Y\n"
+        "wire A -> G1.in0\n"
+        "wire B -> G1.in1\n"
+        "wire G1.out0 -> Z.in0\n"
+        "wire C -> G2.in0\n"
+        "wire D -> G2.in1\n"
+        "wire G2.out0 -> Y.in0\n"
+    );
+
+    app_init(&app);
+    assert(circuit_file_load(&app, temp_path, error_message, sizeof(error_message)));
+    assert_loaded_layout_is_readable(&app);
+    assert_wire_paths_do_not_cross(&app);
+
+    left_bounds = named_nodes_bounds(&app, left_component, 4U);
+    right_bounds = named_nodes_bounds(&app, right_component, 4U);
+    assert(left_bounds.y + left_bounds.height + 40.0f <= right_bounds.y ||
+        right_bounds.y + right_bounds.height + 40.0f <= left_bounds.y);
+
+    unlink(temp_path);
+    app_clear_graph(&app);
+    printf("test_circuit_file_load_packs_disconnected_components passed!\n");
+}
+
+static void test_circuit_file_load_handles_feedback_cycles(void) {
+    AppContext app;
+    char temp_path[] = "/tmp/mlvd-test-cycle-XXXXXX";
+    int fd;
+    char error_message[128];
+    LogicNode *left;
+    LogicNode *right;
+
+    fd = mkstemp(temp_path);
+    assert(fd >= 0);
+    close(fd);
+
+    write_text_file(
+        temp_path,
+        "not N1\n"
+        "not N2\n"
+        "wire N1.out0 -> N2.in0\n"
+        "wire N2.out0 -> N1.in0\n"
+    );
+
+    app_init(&app);
+    assert(circuit_file_load(&app, temp_path, error_message, sizeof(error_message)));
+    left = find_node_by_name(&app, "N1");
+    right = find_node_by_name(&app, "N2");
+    assert(left != NULL);
+    assert(right != NULL);
+    assert(node_is_snapped_to_grid(left));
+    assert(node_is_snapped_to_grid(right));
+    assert(!rectangles_overlap(left->rect, right->rect));
+    assert(fabsf(left->pos.x - right->pos.x) >= 0.001f || fabsf(left->pos.y - right->pos.y) >= 0.001f);
+
+    unlink(temp_path);
+    app_clear_graph(&app);
+    printf("test_circuit_file_load_handles_feedback_cycles passed!\n");
 }
 
 static void test_connected_nodes_can_snap_to_straight_wire_alignment(void) {
@@ -1338,9 +1834,12 @@ int main(void) {
     test_interactive_construction_flow();
     test_compare_mode_without_target();
     test_circuit_file_load();
-    test_circuit_file_load_snaps_positions();
+    test_circuit_file_load_ignores_explicit_positions();
     test_circuit_file_load_failure_keeps_existing_graph();
     test_example_circuits_load();
+    test_circuit_file_load_uses_declaration_order_for_symmetric_layers();
+    test_circuit_file_load_packs_disconnected_components();
+    test_circuit_file_load_handles_feedback_cycles();
     test_connected_nodes_can_snap_to_straight_wire_alignment();
     test_multi_input_gate_can_snap_to_connected_inputs_centerline();
     test_view_context_matches_live_state();

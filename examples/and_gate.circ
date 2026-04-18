@@ -2,10 +2,10 @@
 # Open with:
 #   ./bin/logicsim examples/and_gate.circ
 
-input A at 180,200
-input B at 180,300
-and G1 at 440,220
-output Z at 700,240
+input A
+input B
+and G1
+output Z
 
 wire A -> G1.in0
 wire B -> G1.in1

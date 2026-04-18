@@ -149,7 +149,13 @@ static const char *logic_gate_operator(NodeType type) {
     return " ? ";
 }
 
-static void visit(LogicGraph *graph, LogicNode *node, bool *visited, LogicNode **sorted, uint32_t *count) {
+typedef enum {
+    LOGIC_VISIT_UNSEEN = 0,
+    LOGIC_VISIT_ACTIVE = 1,
+    LOGIC_VISIT_DONE = 2
+} LogicVisitState;
+
+static void visit(LogicGraph *graph, LogicNode *node, uint8_t *visit_state, LogicNode **sorted, uint32_t *count) {
     size_t node_index;
     uint8_t i;
 
@@ -158,10 +164,11 @@ static void visit(LogicGraph *graph, LogicNode *node, bool *visited, LogicNode *
     }
 
     node_index = (size_t)(node - graph->nodes);
-    if (visited[node_index]) {
+    if (visit_state[node_index] == LOGIC_VISIT_DONE || visit_state[node_index] == LOGIC_VISIT_ACTIVE) {
         return;
     }
 
+    visit_state[node_index] = LOGIC_VISIT_ACTIVE;
     for (i = 0; i < node->input_count; i++) {
         LogicPin *pin;
         LogicNet *incoming;
@@ -169,11 +176,11 @@ static void visit(LogicGraph *graph, LogicNode *node, bool *visited, LogicNode *
         pin = &node->inputs[i];
         incoming = logic_find_incoming_net(graph, pin);
         if (incoming) {
-            visit(graph, incoming->source->node, visited, sorted, count);
+            visit(graph, incoming->source->node, visit_state, sorted, count);
         }
     }
 
-    visited[node_index] = true;
+    visit_state[node_index] = LOGIC_VISIT_DONE;
     sorted[(*count)++] = node;
 }
 
@@ -466,13 +473,13 @@ LogicValue logic_eval_gate(NodeType type, LogicValue inputs[], uint8_t count) {
 }
 
 uint32_t logic_topological_sort(LogicGraph *graph, LogicNode **sorted_nodes) {
-    bool visited[MAX_NODES] = {false};
+    uint8_t visit_state[MAX_NODES] = {0};
     uint32_t count;
     uint32_t i;
 
     count = 0;
     for (i = 0; i < graph->node_count; i++) {
-        visit(graph, &graph->nodes[i], visited, sorted_nodes, &count);
+        visit(graph, &graph->nodes[i], visit_state, sorted_nodes, &count);
     }
     return count;
 }

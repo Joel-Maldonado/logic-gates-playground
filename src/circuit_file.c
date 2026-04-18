@@ -1,4 +1,5 @@
 #include "circuit_file.h"
+#include "circuit_layout.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,22 +121,16 @@ static ParsedNode *find_parsed_node(ParsedCircuit *circuit, const char *name) {
     return NULL;
 }
 
-static LogicNode *find_runtime_node(AppContext *app, const char *name) {
+static int32_t find_parsed_node_index(const ParsedCircuit *circuit, const char *name) {
     uint32_t i;
 
-    for (i = 0; i < app->graph.node_count; i++) {
-        LogicNode *node;
-
-        node = &app->graph.nodes[i];
-        if (node->type == (NodeType)-1 || !node->name) {
-            continue;
-        }
-        if (strcmp(node->name, name) == 0) {
-            return node;
+    for (i = 0; i < circuit->node_count; i++) {
+        if (strcmp(circuit->nodes[i].name, name) == 0) {
+            return (int32_t)i;
         }
     }
 
-    return NULL;
+    return -1;
 }
 
 static LogicNode *rebase_node_pointer(const AppContext *source_app, AppContext *dest_app, LogicNode *node) {
@@ -421,51 +416,148 @@ static bool parse_circuit_text(const char *text, ParsedCircuit *circuit, char *e
     return true;
 }
 
-static Vector2 default_node_position(uint32_t index) {
-    return (Vector2){
-        140.0f + ((float)(index % 4U) * 160.0f),
-        160.0f + ((float)(index / 4U) * 110.0f)
-    };
+static void parsed_node_pin_counts(const ParsedNode *node, uint8_t *input_count, uint8_t *output_count) {
+    if (!node || !input_count || !output_count) {
+        return;
+    }
+
+    if (node->type == NODE_INPUT || node->type == NODE_GATE_CLOCK) {
+        *input_count = 0U;
+        *output_count = 1U;
+        return;
+    }
+    if (node->type == NODE_OUTPUT) {
+        *input_count = 1U;
+        *output_count = 0U;
+        return;
+    }
+    if (node->type == NODE_GATE_NOT) {
+        *input_count = 1U;
+        *output_count = 1U;
+        return;
+    }
+    if (node->type == NODE_GATE_DFF) {
+        *input_count = 2U;
+        *output_count = 1U;
+        return;
+    }
+
+    *input_count = 2U;
+    *output_count = 1U;
 }
 
-static bool resolve_source_pin(LogicNode *node, const ParsedEndpoint *endpoint, LogicPin **pin) {
-    if (!node || !pin) {
+static bool resolve_parsed_source_pin(const ParsedNode *node, const ParsedEndpoint *endpoint, uint8_t *pin_index) {
+    uint8_t output_count;
+    uint8_t input_count;
+
+    if (!node || !pin_index) {
         return false;
     }
+
+    parsed_node_pin_counts(node, &input_count, &output_count);
     if (endpoint->explicit_pin) {
-        if (!endpoint->is_output_pin || endpoint->pin_index >= node->output_count) {
+        if (!endpoint->is_output_pin || endpoint->pin_index >= output_count) {
             return false;
         }
-        *pin = &node->outputs[endpoint->pin_index];
+        *pin_index = endpoint->pin_index;
         return true;
     }
-    if (node->output_count != 1U) {
+    if (output_count != 1U) {
         return false;
     }
-    *pin = &node->outputs[0];
+    *pin_index = 0U;
     return true;
 }
 
-static bool resolve_sink_pin(LogicNode *node, const ParsedEndpoint *endpoint, LogicPin **pin) {
-    if (!node || !pin) {
+static bool resolve_parsed_sink_pin(const ParsedNode *node, const ParsedEndpoint *endpoint, uint8_t *pin_index) {
+    uint8_t output_count;
+    uint8_t input_count;
+
+    if (!node || !pin_index) {
         return false;
     }
+
+    parsed_node_pin_counts(node, &input_count, &output_count);
     if (endpoint->explicit_pin) {
-        if (endpoint->is_output_pin || endpoint->pin_index >= node->input_count) {
+        if (endpoint->is_output_pin || endpoint->pin_index >= input_count) {
             return false;
         }
-        *pin = &node->inputs[endpoint->pin_index];
+        *pin_index = endpoint->pin_index;
         return true;
     }
-    if (node->input_count != 1U) {
+    if (input_count != 1U) {
         return false;
     }
-    *pin = &node->inputs[0];
+    *pin_index = 0U;
+    return true;
+}
+
+static bool build_layout_spec(
+    const ParsedCircuit *circuit,
+    CircuitLayoutNode *layout_nodes,
+    CircuitLayoutEdge *layout_edges,
+    uint32_t *layout_edge_count,
+    char *error_message,
+    size_t error_message_size
+) {
+    uint32_t node_index;
+    uint32_t wire_index;
+
+    if (!circuit || !layout_nodes || !layout_edges || !layout_edge_count) {
+        return false;
+    }
+
+    for (node_index = 0U; node_index < circuit->node_count; node_index++) {
+        uint8_t input_count;
+        uint8_t output_count;
+
+        parsed_node_pin_counts(&circuit->nodes[node_index], &input_count, &output_count);
+        layout_nodes[node_index].type = circuit->nodes[node_index].type;
+        layout_nodes[node_index].name = circuit->nodes[node_index].name;
+        layout_nodes[node_index].input_count = input_count;
+        layout_nodes[node_index].output_count = output_count;
+    }
+
+    *layout_edge_count = 0U;
+    for (wire_index = 0U; wire_index < circuit->wire_count; wire_index++) {
+        const ParsedWire *parsed_wire;
+        int32_t source_index;
+        int32_t sink_index;
+        uint8_t source_pin_index;
+        uint8_t sink_pin_index;
+
+        parsed_wire = &circuit->wires[wire_index];
+        source_index = find_parsed_node_index(circuit, parsed_wire->source.node_name);
+        sink_index = find_parsed_node_index(circuit, parsed_wire->sink.node_name);
+        if (source_index < 0 || sink_index < 0) {
+            set_error(error_message, error_message_size, "wire references an unknown node", 0U);
+            return false;
+        }
+        if (!resolve_parsed_source_pin(&circuit->nodes[(uint32_t)source_index], &parsed_wire->source, &source_pin_index)) {
+            set_error(error_message, error_message_size, "wire source pin is invalid", 0U);
+            return false;
+        }
+        if (!resolve_parsed_sink_pin(&circuit->nodes[(uint32_t)sink_index], &parsed_wire->sink, &sink_pin_index)) {
+            set_error(error_message, error_message_size, "wire sink pin is invalid", 0U);
+            return false;
+        }
+
+        layout_edges[*layout_edge_count].source_node_index = (uint32_t)source_index;
+        layout_edges[*layout_edge_count].source_pin_index = source_pin_index;
+        layout_edges[*layout_edge_count].sink_node_index = (uint32_t)sink_index;
+        layout_edges[*layout_edge_count].sink_pin_index = sink_pin_index;
+        (*layout_edge_count)++;
+    }
+
     return true;
 }
 
 static bool apply_parsed_circuit(AppContext *app, const ParsedCircuit *circuit, char *error_message, size_t error_message_size) {
     AppContext staged_app;
+    CircuitLayoutNode layout_nodes[MAX_NODES];
+    CircuitLayoutEdge layout_edges[MAX_NETS];
+    Vector2 layout_positions[MAX_NODES];
+    uint32_t layout_edge_count;
     uint32_t i;
 
     app_init(&staged_app);
@@ -477,12 +569,35 @@ static bool apply_parsed_circuit(AppContext *app, const ParsedCircuit *circuit, 
     app_set_source_path(&staged_app, app->source_path);
     staged_app.source_live_reload = app->source_live_reload;
 
+    if (!build_layout_spec(
+            circuit,
+            layout_nodes,
+            layout_edges,
+            &layout_edge_count,
+            error_message,
+            error_message_size
+        )) {
+        app_clear_graph(&staged_app);
+        return false;
+    }
+    if (!circuit_layout_resolve_positions(
+            layout_nodes,
+            circuit->node_count,
+            layout_edges,
+            layout_edge_count,
+            layout_positions
+        )) {
+        app_clear_graph(&staged_app);
+        set_error(error_message, error_message_size, "could not lay out circuit", 0U);
+        return false;
+    }
+
     for (i = 0; i < circuit->node_count; i++) {
         const ParsedNode *parsed_node;
         Vector2 position;
 
         parsed_node = &circuit->nodes[i];
-        position = parsed_node->has_position ? parsed_node->position : default_node_position(i);
+        position = layout_positions[i];
         position = app_snap_node_position(position, parsed_node->type);
         if (!app_add_named_node(&staged_app, parsed_node->type, parsed_node->name, position)) {
             app_clear_graph(&staged_app);
@@ -492,30 +607,31 @@ static bool apply_parsed_circuit(AppContext *app, const ParsedCircuit *circuit, 
     }
 
     for (i = 0; i < circuit->wire_count; i++) {
-        const ParsedWire *parsed_wire;
         LogicNode *source_node;
         LogicNode *sink_node;
         LogicPin *source_pin;
         LogicPin *sink_pin;
 
-        parsed_wire = &circuit->wires[i];
-        source_node = find_runtime_node(&staged_app, parsed_wire->source.node_name);
-        sink_node = find_runtime_node(&staged_app, parsed_wire->sink.node_name);
-        if (!source_node || !sink_node) {
+        if (layout_edges[i].source_node_index >= staged_app.graph.node_count ||
+            layout_edges[i].sink_node_index >= staged_app.graph.node_count) {
             app_clear_graph(&staged_app);
             set_error(error_message, error_message_size, "wire references an unknown node", 0U);
             return false;
         }
-        if (!resolve_source_pin(source_node, &parsed_wire->source, &source_pin)) {
+        source_node = &staged_app.graph.nodes[layout_edges[i].source_node_index];
+        sink_node = &staged_app.graph.nodes[layout_edges[i].sink_node_index];
+        if (layout_edges[i].source_pin_index >= source_node->output_count) {
             app_clear_graph(&staged_app);
             set_error(error_message, error_message_size, "wire source pin is invalid", 0U);
             return false;
         }
-        if (!resolve_sink_pin(sink_node, &parsed_wire->sink, &sink_pin)) {
+        if (layout_edges[i].sink_pin_index >= sink_node->input_count) {
             app_clear_graph(&staged_app);
             set_error(error_message, error_message_size, "wire sink pin is invalid", 0U);
             return false;
         }
+        source_pin = &source_node->outputs[layout_edges[i].source_pin_index];
+        sink_pin = &sink_node->inputs[layout_edges[i].sink_pin_index];
         if (!logic_connect(&staged_app.graph, source_pin, sink_pin)) {
             app_clear_graph(&staged_app);
             set_error(error_message, error_message_size, "could not connect wire", 0U);
